@@ -1,0 +1,19 @@
+#!/bin/bash
+
+gvar=$1
+gvar_orig="$gvar"
+gns=""
+if [[ "$gvar" =~ "_" ]]; then
+    gns="${gvar%_*}_"
+    gvar="${gvar##*_}"
+fi
+gvar_uc=${gvar^}
+shift
+for ns in "$@"
+do
+    # echo "${gns}${ns}${gvar_uc}=${gvar_orig}"
+    # declare "${gns}${ns}${gvar_uc}=${gvar_orig}"
+    export "${gns}${ns}${gvar_uc}=${gvar_orig}"
+done
+
+# . ${NSMAP}/nsmap args main_print_ main_gtk_

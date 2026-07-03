@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="750" height="750" viewBox="0,0,750,750">
+    <rect rx="0" ry="0" x="191" y="271" width="144" height="144" stroke="black" fill="transparent" stroke-width="1" id="rect1"/>
+    <text x="208" y="300" fill="black" id="text1">S3ConfirmedFile</text>
+    <text x="344" y="92" fill="black" id="text2">S3File</text>
+    <rect rx="0" ry="0" x="291" y="65" width="144" height="144" stroke="black" fill="transparent" stroke-width="1" id="rect2"/>
+    <text x="425" y="302" fill="black" id="text3">S3SignedFile</text>
+    <rect rx="0" ry="0" x="395" y="273" width="144" height="144" stroke="black" fill="transparent" stroke-width="1" id="rect3"/>
+    <text x="305" y="150" fill="black" id="text4">name: String</text>
+    <text x="305" y="128" fill="black" id="text5">bucket: String</text>
+    <line x1="292" y1="102" x2="436" y2="102" stroke="black" stroke-width="1" id="line1"/>
+    <line x1="192" y1="311" x2="336" y2="311" stroke="black" stroke-width="1" id="line2"/>
+    <line x1="395" y1="314" x2="539" y2="314" stroke="black" stroke-width="1" id="line3"/>
+    <text x="205" y="339" fill="black" id="text6">exists: Boolean</text>
+    <text x="205" y="364" fill="black" id="text7">bytes: Long</text>
+    <text x="409" y="342" fill="black" id="text8">url: String</text>
+    <line x1="297" y1="214" x2="284" y2="227" stroke="black" stroke-width="1" id="line4"/>
+    <line x1="298" y1="213" x2="310" y2="226" stroke="black" stroke-width="1" id="line5"/>
+    <line x1="284" y1="227" x2="311" y2="227" stroke="black" stroke-width="1" id="line6"/>
+    <line x1="425" y1="214" x2="412" y2="227" stroke="black" stroke-width="1" id="line7"/>
+    <line x1="426" y1="213" x2="440" y2="227" stroke="black" stroke-width="1" id="line8"/>
+    <line x1="412" y1="227" x2="439" y2="227" stroke="black" stroke-width="1" id="line9"/>
+    <line x1="297" y1="228" x2="297" y2="271" stroke="black" stroke-width="1" id="line10"/>
+    <line x1="427" y1="228" x2="427" y2="273" stroke="black" stroke-width="1" id="line11"/>
+</svg>

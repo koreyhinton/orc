@@ -1,0 +1,17 @@
+#!/bin/bash
+
+gvar=$1
+gvar_orig="$gvar"
+if [[ "$gvar" =~ "_" ]]; then
+    gvar="${gvar##*_}"
+fi
+gvar_uc=${gvar^}
+shift
+for ns in "$@"
+do
+    # echo "${ns}${gvar_uc}=${gvar_orig}"
+    # declare "${ns}${gvar_uc}=${gvar_orig}"
+    export "${ns}${gvar_uc}=${gvar_orig}"
+done
+
+# . ${NSMAP}/nsremap old_Args new1_ new2_
