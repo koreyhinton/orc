@@ -38,9 +38,9 @@ cat << EOF
      **********************************************************************/
 
     var ${!s3_signed_file} = ${S3_SIGNED_FILE_CLASS_NS} (
-        ${!s3_file}.bucket,
-        ${!s3_file}.name,
-        ""
+        bucket = ${!s3_file}.bucket,
+        name = ${!s3_file}.name,
+        url = ""
     )
     try {
         val ${v}PSigner = ${S3_PSIGNER}.builder()

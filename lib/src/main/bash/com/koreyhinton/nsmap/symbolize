@@ -1,0 +1,23 @@
+#!/bin/bash
+
+ns="$1"
+shift
+
+for vr in "$@"
+do
+    . ${NSMAP}/nsremap "${ns}${vr}" "$ns"
+done
+
+# same as multiple nsremap statements:
+#    . ${NSMAP}/nsremap name_space_VarName name_space_
+
+# usage:
+#
+#     . ${NSMAP}/symbolize main_gameloop_ns_ VarOne VarTwo
+#
+# it makes an indirect pointer to the same name for all namespaced_Variables:
+#     echo ${main_gameloop_ns_VarOne}
+#     main_gameloop_ns_VarOne
+#
+#     echo ${main_gameloop_ns_VarTwo}
+#     main_gameloop_ns_VarTwo

@@ -36,10 +36,10 @@ cat << EOF
      **********************************************************************/
 
     var ${!s3_confirmed_file} = ${S3_CONFIRMED_FILE_CLASS_NS}(
-        ${!s3_file}.bucket,
-        ${!s3_file}.name,
-        false,
-        0
+        bucket = ${!s3_file}.bucket,
+        name = ${!s3_file}.name,
+        exists = false,
+        bytes = 0
     )
     try {
         val ${v}S3Client = ${S3_CLIENT}.builder()
