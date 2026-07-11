@@ -9,6 +9,8 @@
 : "${S3_URI:=java.net.URI}"
 : "${S3_DURA:=java.time.Duration}"
 : "${S3_GOPR:=software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest}"
+: "${S3_ERR_LOG:=println}"
+: "${S3_SECRET_ENV_VAR:=System.getProperty}"
 v=${1}
 # maps
 s3_file=${v}S3File
@@ -18,7 +20,7 @@ cat << EOF
 
     /**********************************************************************
      *                                                                    *
-     *    s3 presigned-url                                                *
+     *    s3 presign-url                                                  *
      *                                                                    *
      *        command arg:                                                *
      *            |ns_|                                                   *
@@ -44,16 +46,16 @@ cat << EOF
     )
     try {
         val ${v}PSigner = ${S3_PSIGNER}.builder()
-            .region(${S3_REG}.of(System.getProperty("AWS_REGION")))
+            .region(${S3_REG}.of(${S3_SECRET_ENV_VAR}("AWS_REGION")))
             .credentialsProvider(
                 ${S3_CRED_PROV}.create(
                     ${S3_CRED}.create(
-                        System.getProperty("AWS_ACCESS_KEY_ID"),
-                        System.getProperty("AWS_SECRET_ACCESS_KEY")
+                        ${S3_SECRET_ENV_VAR}("AWS_ACCESS_KEY_ID"),
+                        ${S3_SECRET_ENV_VAR}("AWS_SECRET_ACCESS_KEY")
                     )
                 )
             )
-            .endpointOverride(${S3_URI}.create(System.getProperty("AWS_URL")))
+            .endpointOverride(${S3_URI}.create(${S3_SECRET_ENV_VAR}("AWS_URL")))
             .build()
 
         val ${v}Request = ${S3_GOR}.builder()
@@ -66,15 +68,15 @@ cat << EOF
             .getObjectRequest(${v}Request)
             .build()
         ${!s3_signed_file}.url = ${v}PSigner.presignGetObject(${v}PresignedRequest).url().toString()
-    } catch(e: Exception) {
-        println("Warning: " + e.javaClass.simpleName  +
+    } catch(${v}Exception: Exception) {
+        ${S3_ERR_LOG}("Warning: " + ${v}Exception.javaClass.simpleName  +
             " exception. Attempted to retrieve s3 file " + ${!s3_file}.name +
-            " and failed with exception: " + e.message)
+            " and failed with exception: " + ${v}Exception.message)
     }
 
     /**********************************************************************
      *                                                                    *
-     * :END: s3 presigned-url                                             *
+     * :END: s3 presign-url                                               *
      *                                                                    *
      **********************************************************************/
 

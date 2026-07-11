@@ -7,6 +7,8 @@
 : "${S3_CRED:=software.amazon.awssdk.auth.credentials.AwsBasicCredentials}"
 : "${S3_CRED_PROV:=software.amazon.awssdk.auth.credentials.StaticCredentialsProvider}"
 : "${S3_URI:=java.net.URI}"
+: "${S3_ERR_LOG:=println}"
+: "${S3_SECRET_ENV_VAR:=System.getProperty}"
 v=${1}
 # maps
 s3_file=${v}S3File # input
@@ -43,16 +45,16 @@ cat << EOF
     )
     try {
         val ${v}S3Client = ${S3_CLIENT}.builder()
-            .region(${S3_REG}.of(System.getProperty("AWS_REGION")))
+            .region(${S3_REG}.of(${S3_SECRET_ENV_VAR}("AWS_REGION")))
             .credentialsProvider(
                 ${S3_CRED_PROV}.create(
                     ${S3_CRED}.create(
-                        System.getProperty("AWS_ACCESS_KEY_ID"),
-                        System.getProperty("AWS_SECRET_ACCESS_KEY")
+                        ${S3_SECRET_ENV_VAR}("AWS_ACCESS_KEY_ID"),
+                        ${S3_SECRET_ENV_VAR}("AWS_SECRET_ACCESS_KEY")
                     )
                 )
             )
-            .endpointOverride(${S3_URI}.create(System.getProperty("AWS_URL")))
+            .endpointOverride(${S3_URI}.create(${S3_SECRET_ENV_VAR}("AWS_URL")))
             .build()
         val ${v}Request = ${S3_HOR}.builder()
             .bucket(${!s3_file}.bucket)
@@ -61,10 +63,10 @@ cat << EOF
         var ${v}Response = ${v}S3Client.headObject(${v}Request)
         ${!s3_confirmed_file}.exists = true
         ${!s3_confirmed_file}.bytes = ${v}Response.contentLength()
-    } catch(e: Exception) {
-        println("Warning: " + e.javaClass.simpleName  +
+    } catch(${v}Exception: Exception) {
+        ${S3_ERR_LOG}("Warning: " + ${v}Exception.javaClass.simpleName  +
             " exception. Attempted to retrieve s3 file " + ${!s3_file}.name +
-            " and failed with exception: " + e.message)
+            " and failed with exception: " + ${v}Exception.message)
     }
 
     /**********************************************************************
