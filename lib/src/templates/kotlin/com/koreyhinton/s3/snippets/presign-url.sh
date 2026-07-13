@@ -13,8 +13,7 @@
 : "${S3_SECRET_ENV_VAR:=System.getProperty}"
 v=${1}
 # maps
-s3_file=${v}S3File
-s3_signed_file=${v}S3SignedFile
+. ${NSMAP}/bind ${v} S3File S3SignedFile
 
 cat << EOF
 

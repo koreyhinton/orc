@@ -1,0 +1,25 @@
+
+bind_ns=$1
+shift
+
+for bind_vr in "$@"
+do
+    bind_vr_sc=""  # snake case
+    for (( i=0; i<${#bind_vr}; i++)); do
+        bind_char="${bind_vr:i:1}"
+        if [[ "$bind_char" =~ [A-Z] && $i -gt 0 ]]; then
+            bind_vr_sc="${bind_vr_sc}_${bind_char,,}"
+        else
+            bind_vr_sc="${bind_vr_sc}${bind_char,,}"
+        fi
+    done
+
+    bind_indirection="${bind_ns}${bind_vr}"
+    if [[ -z "${!bind_indirection}" ]]; then
+        # same as symbolize
+        declare "${bind_ns}${bind_vr}=${bind_ns}${bind_vr}"
+        declare "${bind_vr_sc}=${bind_ns}${bind_vr}"
+    else
+        declare "${bind_vr_sc}=${bind_ns}${bind_vr}"
+    fi
+done

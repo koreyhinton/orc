@@ -16,8 +16,7 @@
 
 v=${1}
 # maps
-dcim_file=${v}DcimFile
-dcim_device=${v}DcimDevice
+. ${NSMAP}/bind ${v} DcimFile DcimDevice
 
 cat << EOF
 
