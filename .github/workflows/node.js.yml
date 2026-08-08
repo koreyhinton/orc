@@ -27,6 +27,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: ./lib/src/test/typescript/com/koreyhinton/router/regexparam/package-lock.json
     - name: install test dependencies
       working-directory: ./lib/src/test/typescript/com/koreyhinton/router/regexparam
       run: npm ci
