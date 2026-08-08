@@ -32,4 +32,5 @@ jobs:
       working-directory: ./lib/src/test/typescript/com/koreyhinton/router/regexparam
       run: npm ci
     - name: run test
+      working-directory: ./lib/src/test/typescript/com/koreyhinton/router/regexparam
       run: ./run.sh
