@@ -1,10 +1,11 @@
 #!/bin/bash
 
-: "${REGEXPARAM_CLASS:=RegexParam}"
+: "${REG_PAR_CLASS:=RegexParam}"
+: "${REG_PAR_RES_CLASS:=RegexParamResult}"
 
 v=${1}
 # maps
-. ${NSMAP}/bind ${v} KeyedRoutes RegexParams
+. ${NSMAP}/bind ${v} RegexParamManifest
 
 cat << EOF
 
@@ -17,32 +18,35 @@ cat << EOF
      *            |ns_|                                                   *
      *                                                                    *
      *        input:                                                      *
-     *            |ns_|KeyedRoutes: KeyedRoute[]                          *
+     *            |ns_|RegexParamManifest: RegexParamManifest             *
      *                                                                    *
      *        output:                                                     *
-     *            |ns_|RegexParams: (RegexParam[])                        *
+     *            |ns_|RegexParamResult: RegexParamResult                 *
      *                                                                    *
      *        required model type imports:                                *
-     *            KeyedRoute                                              *
      *            RegexParam                                              *
+     *            RegexParamManifest                                      *
+     *            RegexParamResult                                        *
      *                                                                    *
      **********************************************************************/
 
-    const ${!regex_params}: ${REGEXPARAM_CLASS}[] = [];
+    const ${v}RegexParamResult = {
+        regexParams: ([] as ${REG_PAR_CLASS}[])
+    } as ${REG_PAR_RES_CLASS};
 
-    for (const ${v}KeyedRoute of ${!keyed_routes}) {
+    for (const ${v}KeyedPath of ${!regex_param_manifest}.keyedPaths) {
 
-        if (${v}KeyedRoute.path instanceof RegExp) {
-            ${!regex_params}.push(new RegexParam(
-                /*keys:*/ false,
-                /*pattern:*/ ${v}KeyedRoute.path
-            ));
+        if (${v}KeyedPath instanceof RegExp) {
+            ${v}RegexParamResult.regexParams.push({
+                keys: false,
+                pattern: ${v}KeyedPath
+            } as ${REG_PAR_CLASS});
             continue;
         }
 
-	let ${v}C: string, ${v}O: number, ${v}Tmp: string, ${v}Ext: number,
-            ${v}Keys=[], ${v}Pattern='',
-            ${v}Arr = ${v}KeyedRoute.path.split('/');
+	let ${v}C: string, ${v}O: number, ${v}Tmp: string | undefined,
+            ${v}Ext: number, ${v}Keys=[], ${v}Pattern='',
+            ${v}Arr: (string|undefined)[] = ${v}KeyedPath.split('/');
 	${v}Arr[0] || ${v}Arr.shift();
 
 	while (${v}Tmp = ${v}Arr.shift()) {
@@ -61,10 +65,10 @@ cat << EOF
 		}
 	}
 
-        ${!regex_params}.push(new RegexParam(
-            /*keys:*/ ${v}Keys,
-            /*pattern:*/ new RegExp('^' + ${v}Pattern + '\/?$', 'i')
-	));
+        ${v}RegexParamResult.regexParams.push({
+            keys: ${v}Keys,
+            pattern: new RegExp('^' + ${v}Pattern + '\/?$', 'i')
+	} as ${REG_PAR_CLASS});
 
     }
 

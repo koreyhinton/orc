@@ -2,11 +2,9 @@
 
 cat << EOF
 
-export class RegexParam {
-    constructor(
-        public keys: Array<string>,
-        public pattern: RegExp
-    ) {}
+export type RegexParam = {
+    keys: string[] | false;
+    pattern: RegExp;
 }
 
 EOF

@@ -7,19 +7,32 @@ v=${1:-test_}
 cat << EOF
 
 import test from "tape";
-import { KeyedRoute } from "../fixtures/models/keyed-route";
-import { RegexParam } from "../fixtures/models/regex-param";
+import { RegexParam, RegexParamManifest,
+         RegexParamResult } from "../fixtures/models";
 
-const fn = function(str) {
-    var ${v}regexparam_KeyedRoutes = [new KeyedRoute(str)];
+declare module "tape" {
+    interface Test {
+        isMatch(
+            route: string,
+            url: string,
+            params: Record<string, string | null>
+        ): void;
+    }
+}
+
+const fn = function(str: string | RegExp): RegexParam {
+    var breakTypeScriptTest: string = 123;
+    var ${v}regexparam_RegexParamManifest = {
+        keyedPaths: [str] as (string|RegExp)[]
+    } as RegexParamManifest;
     ` ${ORC_ROUTER}/regexparam/snippets/regexparam.sh ${v}regexparam_ `
-    return ${v}regexparam_RegexParams[0];
+    return ${v}regexparam_RegexParamResult.regexParams[0];
 };
 
 test.Test.prototype.isMatch = function (route, url, params) {
-  let i=0, out={}, result=fn(route);
+  let i=0, out:Record<string, string|any>={}, result=fn(route);
   let matches = result.pattern.exec(url);
-  if (matches !== null) {
+  if (matches !== null && result.keys !== false) {
 	  while (i < result.keys.length) {
 	    out[ result.keys[i] ] = matches[++i] || null;
 	  }
@@ -78,7 +91,7 @@ test('param', t => {
 	t.true(pattern.test('/books/narnia/'), '~> matches definition w/ trailing slash');
 	t.false(pattern.test('/books/narnia/hello'), '~> does not match extra bits');
 	t.false(pattern.test('books/narnia'), '~> does not match path without lead slash');
-	let [_, value] = pattern.exec('/books/narnia');
+	let [_, value] = pattern.exec('/books/narnia')!;
 	t.is(value, 'narnia', '~> executing pattern gives correct value');
 	t.end();
 });
@@ -91,7 +104,7 @@ test('param :: static :: none', t => {
 	t.true(pattern.test('/narnia/'), '~> matches definition w/ trailing slash');
 	t.false(pattern.test('/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('narnia'), '~> does not match path without lead slash');
-	let [_, value] = pattern.exec('/narnia');
+	let [_, value] = pattern.exec('/narnia')!;
 	t.is(value, 'narnia', '~> executing pattern gives correct value');
 	t.end();
 });
@@ -107,7 +120,7 @@ test('param :: static :: multiple', t => {
 	t.false(pattern.test('foo/bar/narnia'), '~> does not match path without lead slash');
 	t.false(pattern.test('/foo/narnia'), '~> does not match if statics are different');
 	t.false(pattern.test('/bar/narnia'), '~> does not match if statics are different');
-	let [_, value] = pattern.exec('/foo/bar/narnia');
+	let [_, value] = pattern.exec('/foo/bar/narnia')!;
 	t.is(value, 'narnia', '~> executing pattern gives correct value');
 	t.end();
 });
@@ -123,7 +136,7 @@ test('param :: multiple', t => {
 	t.true(pattern.test('/books/smith/narnia/'), '~> matches definition w/ trailing slash');
 	t.false(pattern.test('/books/smith/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('books/smith/narnia'), '~> does not match path without lead slash');
-	let [_, author, title] = pattern.exec('/books/smith/narnia');
+	let [_, author, title] = pattern.exec('/books/smith/narnia')!;
 	t.is(author, 'smith', '~> executing pattern gives correct value');
 	t.is(title, 'narnia', '~> executing pattern gives correct value');
 	t.end();
@@ -166,7 +179,7 @@ test('param :: optional', t => {
 	t.true(pattern.test('/books/smith/narnia/'), '~> matches when fully populated w/ trailing slash');
 	t.false(pattern.test('/books/smith/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('books/smith/narnia'), '~> does not match path without lead slash');
-	let [_, author, title] = pattern.exec('/books/smith/narnia');
+	let [_, author, title] = pattern.exec('/books/smith/narnia')!;
 	t.is(author, 'smith', '~> executing pattern gives correct value');
 	t.is(title, 'narnia', '~> executing pattern gives correct value');
 	t.end();
@@ -180,7 +193,7 @@ test('param :: optional :: static :: none', t => {
 	t.true(pattern.test('/narnia/'), '~> matches definition w/ trailing slash');
 	t.false(pattern.test('/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('narnia'), '~> does not match path without lead slash');
-	let [_, value] = pattern.exec('/narnia');
+	let [_, value] = pattern.exec('/narnia')!;
 	t.is(value, 'narnia', '~> executing pattern gives correct value');
 	t.end();
 });
@@ -198,7 +211,7 @@ test('param :: optional :: multiple', t => {
 	t.true(pattern.test('/books/horror/smith/narnia/'), '~> matches when fully populated w/ trailing slash');
 	t.false(pattern.test('/books/horror/smith/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('books/horror/smith/narnia'), '~> does not match path without lead slash');
-	let [_, genre, author, title] = pattern.exec('/books/horror/smith/narnia');
+	let [_, genre, author, title] = pattern.exec('/books/horror/smith/narnia')!;
 	t.is(genre, 'horror', '~> executing pattern gives correct value');
 	t.is(author, 'smith', '~> executing pattern gives correct value');
 	t.is(title, 'narnia', '~> executing pattern gives correct value');
@@ -214,7 +227,7 @@ test('wildcard', t => {
 	t.true(pattern.test('/books/narnia/'), '~> matches definition w/ trailing slash');
 	t.true(pattern.test('/books/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('books/narnia'), '~> does not match path without lead slash');
-	let [_, value] = pattern.exec('/books/narnia/reviews');
+	let [_, value] = pattern.exec('/books/narnia/reviews')!;
 	t.is(value, 'narnia/reviews', '~> executing pattern gives ALL values after base');
 	t.end();
 });
@@ -227,7 +240,7 @@ test('wildcard :: root', t => {
 	t.true(pattern.test('/narnia/'), '~> matches definition w/ trailing slash');
 	t.true(pattern.test('/narnia/reviews'), '~> does not match extra bits');
 	t.false(pattern.test('narnia'), '~> does not match path without lead slash');
-	let [_, value] = pattern.exec('/foo/bar/baz');
+	let [_, value] = pattern.exec('/foo/bar/baz')!;
 	t.is(value, 'foo/bar/baz', '~> executing pattern gives ALL values together');
 	t.end();
 });
