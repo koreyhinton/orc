@@ -21,7 +21,6 @@ declare module "tape" {
 }
 
 const fn = function(str: string | RegExp): RegexParam {
-    var breakTypeScriptTest: string = 123;
     var ${v}regexparam_RegexParamManifest = {
         keyedPaths: [str] as (string|RegExp)[]
     } as RegexParamManifest;
