@@ -39,7 +39,8 @@ cat << EOF
         if (${v}KeyedPath instanceof RegExp) {
             ${v}RegexParamResult.regexParams.push({
                 keys: false,
-                pattern: ${v}KeyedPath
+                pattern: ${v}KeyedPath,
+                keyedPath: ${v}KeyedPath
             } as ${REG_PAR_CLASS});
             continue;
         }
@@ -67,7 +68,8 @@ cat << EOF
 
         ${v}RegexParamResult.regexParams.push({
             keys: ${v}Keys,
-            pattern: new RegExp('^' + ${v}Pattern + '\/?$', 'i')
+            pattern: new RegExp('^' + ${v}Pattern + '\/?$', 'i'),
+            keyedPath: ${v}KeyedPath
 	} as ${REG_PAR_CLASS});
 
     }

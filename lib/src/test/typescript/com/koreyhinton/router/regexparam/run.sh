@@ -2,6 +2,8 @@
 
 : "${GITHUB_WORKSPACE:=/k/repos/kh/orc}"
 
+# nvm use 22 # uncomment and run this on local machine switch to 22
+
 export ORC_ROUTER="${GITHUB_WORKSPACE}/lib/src/templates/typescript/com/koreyhinton/router"
 export NSMAP="${GITHUB_WORKSPACE}/lib/src/main/bash/com/koreyhinton/nsmap"
 

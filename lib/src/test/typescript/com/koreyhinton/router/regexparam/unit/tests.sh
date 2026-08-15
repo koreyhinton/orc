@@ -25,7 +25,12 @@ const fn = function(str: string | RegExp): RegexParam {
         keyedPaths: [str] as (string|RegExp)[]
     } as RegexParamManifest;
     ` ${ORC_ROUTER}/regexparam/snippets/regexparam.sh ${v}regexparam_ `
-    return ${v}regexparam_RegexParamResult.regexParams[0];
+    const ${v}Res = ${v}regexparam_RegexParamResult.regexParams[0];
+    return { /*delete ${v}Res.keyedPath*/
+        keys: ${v}Res.keys,
+        pattern: ${v}Res.pattern
+    } as RegexParam;
+
 };
 
 test.Test.prototype.isMatch = function (route, url, params) {
