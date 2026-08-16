@@ -15,10 +15,10 @@ cat << EOF
      *        command arg:                                                *
      *            |ns_|                                                   *
      *                                                                    *
-     *        input:                                                      *
+     *        input (first call only):                                    *
      *            |ns_|EventStoreConfig: EventStoreConfig                 *
      *                                                                    *
-     *        output:                                                     *
+     *        input/output:                                               *
      *            |ns_|EventStore: EventStore                             *
      *                                                                    *
      *        required model type imports:                                *
@@ -26,10 +26,6 @@ cat << EOF
      *            EventPollSubject                                        *
      *                                                                    *
      **********************************************************************/
-
-    const ${v}EventStore = {
-        pollSubjects: [] as EventPollSubject[]
-    } as EventStore;
 
     for (const ${v}EventRegistration of ${!event_store_config}.events) {
 
