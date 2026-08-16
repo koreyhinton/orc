@@ -101,17 +101,6 @@ cat << EOF
         ${!router}.activeRoute.hot = false;
     }
 
-
-    // todos (for the router poll):
-    //     todo: maybe not needed test the next todo first maybe it catches it else: on window click prevent default if href attribute and e.target.closest('a')
-    //     todo: on navigate event click take the event and intercept it
-/*
-            key: 'WindowClickEvent',
-            type: 'click',
-            listener: window
-*/
-
-
     /**********************************************************************
      *                                                                    *
      * :END: router poll route                                            *

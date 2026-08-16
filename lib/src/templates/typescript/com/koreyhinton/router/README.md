@@ -6,7 +6,7 @@ that generate the typescript files (and you probably want to gitignore the
 .ts files because they will about 5x the size, but you can inspect the file
 to understand how the bash syntax resulted into a combined code file)
 
-This library uses an adapted version of https://github.com/lukeed/regexparam code and requires you include his https://github.com/lukeed/regexparam/blob/main/license (MIT license) for his part as well as my https://github.com/koreyhinton/orc/LICENSE (AGPL-3.0 license).
+This library uses an adapted version of https://github.com/lukeed/regexparam code and requires you include his https://github.com/lukeed/regexparam/blob/main/license (MIT license) for his part as well as my https://github.com/koreyhinton/orc/blobl/main/LICENSE (AGPL-3.0 license).
 
 Side note: bash syntax can be terse, the only thing strange in the example (I believe) is escape interpolated strings so they output properly:
 
@@ -53,7 +53,6 @@ You must change these path variables inside `./build.sh`:
 Source Files:
 
 - ./tsconfig.json
-- ./package-lock.json
 - ./index.html
 - ./src/main.sh
 - ./src/models.sh
@@ -63,6 +62,7 @@ Source Files:
 
 Generated Files:
 
+- ./package-lock.json
 - ./dist/your-app-name.es.js
 - ./dist/your-app-name.cjs.js
 - ./src/models.ts
@@ -140,7 +140,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/main.ts'),
-      name: 'YourAppNAme',
+      name: 'YourAppName',
       fileName: (format) => `your-app-name.${format}.js`,
       formats: ['es', 'cjs']
     },
