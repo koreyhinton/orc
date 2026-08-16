@@ -49,6 +49,9 @@ cat << EOF
         ${v}Router.regexParams = ${v}regpar_RegexParamResult.regexParams;
     }
 
+    const ${v}EventStore = {
+        pollSubjects: [] as EventPollSubject[]
+    };
     const ${v}EventStoreConfig = {
         events: [
             {
