@@ -13,7 +13,6 @@ REG_PARAM_SNIPPET=$(cat << EOF
         let ${v}Matched = false;
         for (const ${v}Rp of ${!router}.regexParams) {
             const ${v}ResultArr = ${v}Rp.pattern.exec(${v}RealPath);
-console.log(${v}ResultArr);
             if (${v}ResultArr) {
                 ${v}KeyedPath = ${v}Rp.keyedPath;
                 if (Array.isArray(${v}Rp.keys)) {
