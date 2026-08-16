@@ -181,6 +181,7 @@ command line run
 ```sh
 chmod +x build.sh
 chmod +x src/main.sh
+chmod +x src/main-controls-off.sh
 chmod +x src/models.sh
 ./build.sh && npx serve
 
