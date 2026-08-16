@@ -264,12 +264,13 @@ cat << EOF
             if ('TimerStartClickEvent' in ${v}event_EventPollReport.polls) {
                 // start
                 activeTimer = true;
-                const evt = ${v}event_EventStoreConfig.events.find(e => e.key == 'TimerStartClickEvent');
-                if (evt != null) {
-                    evt.listener.removeEventListener('TimerStartClickEvent', ()=>{});
-                    (evt.listener as HTMLElement).style.visibility = "hidden";
-                    ${v}ui_off_StopBtn.style.visibility = "visible";
+                const pollEvt = ${v}event_EventPollReport.polls['TimerStartClickEvent'];
+                if (pollEvt != null) {
+                    pollEvt.event!.target!.removeEventListener('TimerStartClickEvent', ()=>{});
+                    (pollEvt.event!.target! as HTMLElement).style.visibility = "hidden";
                 }
+                
+                ${v}ui_off_StopBtn.style.visibility = "visible";
 
                 ${v}event_EventStoreConfig.events = [
                     {
@@ -287,11 +288,11 @@ cat << EOF
                 ` ./main-controls-off.sh ${v}ui_off_ `
 
                 activeTimer = false;
-                const evt = ${v}event_EventStoreConfig.events.find(e => e.key == 'TimerStopClickEvent');
-                if (evt != null) {
-                    evt.listener.removeEventListener('TimerStopClickEvent', ()=>{});
-                    startBtn.style.visibility = "visible";
+                const pollEvt = ${v}event_EventPollReport.polls['TimerStopClickEvent'];
+                if (pollEvt != null) {
+                    pollEvt.event!.target!.removeEventListener('TimerStopClickEvent', ()=>{});
                 }
+                startBtn.style.visibility = "visible";
 
                 ${v}event_EventStoreConfig.events = [
                     {
