@@ -31,9 +31,9 @@ cat << EOF
         polls: {}
     };
 
-    for (var ${v}Si=0;/*subject index*/
+    for (let ${v}Si=0;/*subject index*/
             ${v}Si<${!event_store}!.pollSubjects.length; ${v}Si++) {
-        var ${v}TestSubject = ${!event_store}!.pollSubjects[${v}Si];
+        let ${v}TestSubject = ${!event_store}!.pollSubjects[${v}Si];
         if (${v}TestSubject.polled) {
             ${v}EventPollReport.polls[${v}TestSubject.key] = {
                 event: ${v}TestSubject.event,

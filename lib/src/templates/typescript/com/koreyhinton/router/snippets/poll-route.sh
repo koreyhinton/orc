@@ -11,7 +11,7 @@ export ${v}${priv}EventStore=${!router}.eventStore
 REG_PARAM_SNIPPET=$(cat << EOF
 
         const ${v}Params: Record<string, string | null> = {};
-        var ${v}KeyedPath: (${REG_PAR_MAN_KEY_PATH_TYPES}) | null | string | RegExp = null;
+        let ${v}KeyedPath: (${REG_PAR_MAN_KEY_PATH_TYPES}) | null | string | RegExp = null;
         let ${v}Matched = false;
         for (const ${v}Rp of ${!router}.regexParams) {
             const ${v}ResultArr = ${v}Rp.pattern.exec(${v}RealPath);
@@ -19,7 +19,7 @@ REG_PARAM_SNIPPET=$(cat << EOF
                 ${v}KeyedPath = ${v}Rp.keyedPath;
                 if (Array.isArray(${v}Rp.keys)) {
                     const ${v}Keys = (${v}Rp.keys as string[]);
-                    for (var ${v}I=0; ${v}I<${v}Keys.length; ${v}I++) {
+                    for (let ${v}I=0; ${v}I<${v}Keys.length; ${v}I++) {
                         // +1 to start at the first capture group (index 0 has complete match)
                         ${v}Params[${v}Keys[${v}I]] = ${v}ResultArr[${v}I+1] || null;
                     }
@@ -63,7 +63,7 @@ cat << EOF
     if (${!router}.activeRoute == null) {
 
         /* snippet */
-        var ${v}RealPath = location.pathname;
+        let ${v}RealPath = location.pathname;
         ${REG_PARAM_SNIPPET}
         ${!router}.activeRoute = {
             hot: true,
@@ -83,7 +83,7 @@ cat << EOF
             ${!router}.activeRoute.realPath = ${v}NavUrl.pathname;
 
             /* snippet */
-            var ${v}RealPath = ${v}NavUrl.pathname;
+            let ${v}RealPath = ${v}NavUrl.pathname;
             ${REG_PARAM_SNIPPET}
             ${!router}.activeRoute.params = ${v}Params;
             ${!router}.activeRoute.realPath = ${v}RealPath;

@@ -32,10 +32,10 @@ cat << EOF
      *                                                                    *
      **********************************************************************/
 
-    var ${v}${priv}regpar_RegexParamManifest: RegexParamManifest = {
+    const ${v}${priv}regpar_RegexParamManifest: RegexParamManifest = {
         keyedPaths: []
     };
-    var ${v}${priv}RegexParams: RegexParam[] = [];
+    let ${v}${priv}RegexParams: RegexParam[] = [];
 
     for (const ${v}Route of ${v}RouterConfig.routes) {
         const ${v}NormRoute = ${v}Route.startsWith('/')
@@ -65,7 +65,7 @@ cat << EOF
 
     ` ${ORC_EVENT}/snippets/register-events.sh ${v}${priv} `
 
-    var ${v}Router: Router = {
+    let ${v}Router: Router = {
         activeRoute: null, // gets assigned in poll
         keyedPaths: ${v}${priv}regpar_RegexParamManifest.keyedPaths,
         regexParams: ${v}${priv}RegexParams,

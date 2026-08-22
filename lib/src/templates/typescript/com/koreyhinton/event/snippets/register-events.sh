@@ -34,10 +34,10 @@ cat << EOF
             ${v}EventRegistration.listener.addEventListener(
                 ${v}EventRegistration.eventType,
                 ${v}FiredEvt => {
-                    for (var ${v}Si=0;/*subject index*/
+                    for (let ${v}Si=0;/*subject index*/
                             ${v}Si<${!event_store}.pollSubjects.length;
                             ${v}Si++) {
-                        var ${v}TestSubject = 
+                        let ${v}TestSubject = 
                             ${!event_store}.pollSubjects[${v}Si];
                         if (${v}TestSubject.key === ${v}EventRegistration.key) {
                             if (${v}EventRegistration.eventType == 'navigate' &&
