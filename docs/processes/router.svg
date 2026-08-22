@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="750" height="750" viewBox="0,0,750,750" style="background-color:white">
+    <polyline points="270 203 207 203 217 193 207 203 217 213" stroke="black" fill="transparent" stroke-width="1" id="polyline2"/>
+    <text x="106" y="218" fill="black" id="text3">poll loop</text>
+    <rect rx="10" ry="10" x="65" y="190" width="138" height="67" stroke="black" fill="transparent" stroke-width="1" id="rect3"/>
+    <line x1="270" y1="154" x2="270" y2="203" stroke="black" stroke-width="1" id="line1"/>
+    <text x="104" y="239" fill="black" id="text4">(app code)</text>
+    <text x="295" y="335" fill="black" id="text5">poll-route</text>
+    <rect rx="10" ry="10" x="265" y="297" width="138" height="67" stroke="black" fill="transparent" stroke-width="1" id="rect4"/>
+    <line x1="184" y1="258" x2="184" y2="327" stroke="black" stroke-width="1" id="line2"/>
+    <polyline points="185 327 260 327 250 317 260 327 250 337" stroke="black" fill="transparent" stroke-width="1" id="polyline3"/>
+    <text x="187" y="296" fill="black" id="text6">each iter.</text>
+    <rect rx="0" ry="0" x="277" y="166" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect5"/>
+    <text x="319" y="204" fill="black" id="text7">Router</text>
+    <text x="78" y="328" fill="black" id="text8">Router</text>
+    <polyline points="325 365 325 456 315 446 325 456 335 446" stroke="black" fill="transparent" stroke-width="1" id="polyline4"/>
+    <rect rx="0" ry="0" x="42" y="295" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect6"/>
+    <rect rx="0" ry="0" x="264" y="463" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect7"/>
+    <text x="310" y="498" fill="black" id="text9">Router</text>
+    <rect rx="0" ry="0" x="6" y="30" width="132" height="59" stroke="black" fill="transparent" stroke-width="1"/>
+    <text x="28" y="66" fill="black" id="text14">RouterConfig</text>
+    <polyline points="96 117 239 117 229 107 239 117 229 127" stroke="black" fill="transparent" stroke-width="1" id="polyline6"/>
+    <rect rx="10" ry="10" x="243" y="86" width="138" height="67" stroke="black" fill="transparent" stroke-width="1" id="rect11"/>
+    <text x="267" y="124" fill="black" id="text15">register-routes</text>
+    <line x1="96" y1="90" x2="96" y2="117" stroke="black" stroke-width="1" id="line7"/>
+</svg>

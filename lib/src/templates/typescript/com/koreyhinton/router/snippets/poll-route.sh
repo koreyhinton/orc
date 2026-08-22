@@ -3,12 +3,14 @@
 : "${ROUTER_WARN:=console.warn}"
 : "${REG_PAR_MAN_KEY_PATH_TYPES:=string|RegExp}"
 v=${1}
+priv="${RANDOM}_"
 # maps
 . ${NSMAP}/bind ${v} Router
+export ${v}${priv}EventStore=${!router}.eventStore
 
 REG_PARAM_SNIPPET=$(cat << EOF
 
-        const ${v}Params = {} as Record<string, string | null>;
+        const ${v}Params: Record<string, string | null> = {};
         var ${v}KeyedPath: (${REG_PAR_MAN_KEY_PATH_TYPES}) | null | string | RegExp = null;
         let ${v}Matched = false;
         for (const ${v}Rp of ${!router}.regexParams) {
@@ -47,23 +49,16 @@ cat << EOF
      *        command arg:                                                *
      *            |ns_|                                                   *
      *                                                                    *
-     *        input:                                                      *
+     *        input/output:                                               *
      *            |ns_|Router: Router                                     *
      *                                                                    *
-     *        output:                                                     *
-     *            |ns_|RegexParams: (RegexParam[])                        *
-     *                                                                    *
      *        required model type imports:                                *
-     *            KeyedRoute                                              *
-     *            RegexParam                                              *
      *            EventPoll                                               *
      *            EventPollReport                                         *
      *                                                                    *
      **********************************************************************/
 
-    const ${v}EventStore = ${!router}.eventStore;
-
-    ` ${ORC_EVENT}/snippets/poll-event.sh ${v} `
+    ` ${ORC_EVENT}/snippets/poll-event.sh ${v}${priv} `
 
     if (${!router}.activeRoute == null) {
 
@@ -75,11 +70,12 @@ cat << EOF
             realPath: ${v}RealPath,
             params: ${v}Params,
             keyedPath: ${v}KeyedPath as ${REG_PAR_MAN_KEY_PATH_TYPES}
-        } as ActiveRoute;
+        };
         /* end snippet */
 
-    } else if ('RouteNavigationEvent' in ${v}EventPollReport.polls) {
-        const ${v}Poll = ${v}EventPollReport.polls['RouteNavigationEvent'];
+    } else if ('RouteNavigationEvent' in ${v}${priv}EventPollReport.polls) {
+        const ${v}Poll: EventPoll =
+            ${v}${priv}EventPollReport.polls['RouteNavigationEvent'];
         const ${v}NavEvt = ${v}Poll.event as NavigateEvent;
         const ${v}NavUrl = new URL(${v}NavEvt.destination.url)
         if (${v}NavUrl.pathname != ${!router}.activeRoute.realPath) {

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-: "${EVT_POL_TYPES:=string}"
-
 v=${1}
 # maps
 
@@ -25,14 +23,13 @@ cat << EOF
      *            |ns_|EventPollReport: EventPollReport                   *
      *                                                                    *
      *        required model type imports:                                *
-     *            EventPoll                                               *
      *            EventPollReport                                         *
      *                                                                    *
      **********************************************************************/
 
-    const ${v}EventPollReport = {
-        polls: {} as Record<${EVT_POL_TYPES}, EventPoll>
-    } as EventPollReport;
+    const ${v}EventPollReport: EventPollReport = {
+        polls: {}
+    };
 
     for (var ${v}Si=0;/*subject index*/
             ${v}Si<${!event_store}!.pollSubjects.length; ${v}Si++) {
@@ -41,7 +38,7 @@ cat << EOF
             ${v}EventPollReport.polls[${v}TestSubject.key] = {
                 event: ${v}TestSubject.event,
                 eventType: ${v}TestSubject.eventType
-            } as EventPoll;
+            };
 
             ${v}TestSubject.event = null;
             ${v}TestSubject.polled = false;

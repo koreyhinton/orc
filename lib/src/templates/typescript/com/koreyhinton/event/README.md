@@ -228,9 +228,7 @@ v=${1:-main_}
 
 cat << EOF
 
-    import type { EventStoreConfig, EventStore, EventPoll,
-        EventPollSubject, EventRegistration, EventPollReport
-     } from './models';
+    ` ${ORC_EVENT}/snippets/import.sh ./models `
 
     export async function load() {
 

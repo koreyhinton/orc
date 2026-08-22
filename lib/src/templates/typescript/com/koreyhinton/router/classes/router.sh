@@ -11,8 +11,7 @@ cat << EOF
     export type Router = RegexParamManifest & {
         activeRoute: ActiveRoute | null;
         regexParams: RegexParam[];
-        eventStore: EventStore | null;
-        defaultPath: string;
+        eventStore: EventStore;
     }
 
 EOF

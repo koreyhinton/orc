@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="750" height="750" viewBox="0,0,750,750" style="background-color:white">
+    <rect rx="0" ry="0" x="46" y="11" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect1"/>
+    <text x="54" y="43" fill="black" id="text1">EventStoreConfig</text>
+    <polyline points="91 168 235 168 225 158 235 168 225 178" stroke="black" fill="transparent" stroke-width="1" id="polyline1"/>
+    <rect rx="10" ry="10" x="238" y="134" width="138" height="67" stroke="black" fill="transparent" stroke-width="1" id="rect2"/>
+    <text x="262" y="172" fill="black" id="text2">register-events</text>
+    <text x="77" y="105" fill="black" id="text3">EventStore</text>
+    <rect rx="0" ry="0" x="46" y="73" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect3"/>
+    <polyline points="249 251 186 251 196 241 186 251 196 261" stroke="black" fill="transparent" stroke-width="1" id="polyline2"/>
+    <text x="85" y="266" fill="black" id="text4">poll loop</text>
+    <rect rx="10" ry="10" x="44" y="238" width="138" height="67" stroke="black" fill="transparent" stroke-width="1" id="rect4"/>
+    <line x1="249" y1="202" x2="249" y2="251" stroke="black" stroke-width="1" id="line1"/>
+    <text x="83" y="287" fill="black" id="text5">(app code)</text>
+    <text x="266" y="383" fill="black" id="text6">poll-event</text>
+    <rect rx="10" ry="10" x="242" y="345" width="138" height="67" stroke="black" fill="transparent" stroke-width="1" id="rect5"/>
+    <line x1="161" y1="306" x2="161" y2="375" stroke="black" stroke-width="1" id="line2"/>
+    <polyline points="162 375 237 375 227 365 237 375 227 385" stroke="black" fill="transparent" stroke-width="1" id="polyline3"/>
+    <text x="164" y="344" fill="black" id="text7">each iter.</text>
+    <rect rx="0" ry="0" x="256" y="214" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect6"/>
+    <text x="287" y="246" fill="black" id="text8">EventStore</text>
+    <text x="55" y="376" fill="black" id="text9">EventStore</text>
+    <polyline points="302 413 302 504 292 494 302 504 312 494" stroke="black" fill="transparent" stroke-width="1" id="polyline4"/>
+    <rect rx="0" ry="0" x="19" y="343" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect7"/>
+    <rect rx="0" ry="0" x="241" y="511" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect8"/>
+    <text x="258" y="546" fill="black" id="text10">EventPollReport</text>
+    <line x1="90" y1="137" x2="90" y2="137" stroke="black" stroke-width="1" id="line3"/>
+    <line x1="92" y1="133" x2="92" y2="167" stroke="black" stroke-width="1" id="line4"/>
+    <circle cx="578" cy="167" r="23" fill="transparent" stroke="black" stroke-width="1" id="circle1"/>
+    <polyline points="414 165 379 165 389 155 379 165 389 175" stroke="black" fill="transparent" stroke-width="1" id="polyline5"/>
+    <line x1="422" y1="165" x2="449" y2="165" stroke="black" stroke-width="1" id="line5"/>
+    <text x="427" y="56" fill="black" id="text12">EventStoreConfig</text>
+    <text x="450" y="118" fill="black" id="text11">EventStore</text>
+    <rect rx="0" ry="0" x="419" y="86" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect9"/>
+    <rect rx="0" ry="0" x="419" y="24" width="132" height="59" stroke="black" fill="transparent" stroke-width="1" id="rect10"/>
+    <line x1="463" y1="165" x2="554" y2="165" stroke="black" stroke-width="1" id="line6"/>
+    <text x="467" y="183" fill="black" id="text13">adhoc ev. reg.</text>
+</svg>
