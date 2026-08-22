@@ -4,7 +4,7 @@
 
 v=${1}
 # maps
-. ${NSMAP}/bind ${v} EventStoreConfig
+. ${NSMAP}/bind ${v} EventStoreConfig EventStore
 
 cat << EOF
 
@@ -15,15 +15,14 @@ cat << EOF
      *        command arg:                                                *
      *            |ns_|                                                   *
      *                                                                    *
-     *        input (first call only):                                    *
+     *        input:                                                      *
      *            |ns_|EventStoreConfig: EventStoreConfig                 *
      *                                                                    *
      *        input/output:                                               *
      *            |ns_|EventStore: EventStore                             *
      *                                                                    *
      *        required model type imports:                                *
-     *            EventStore                                              *
-     *            EventPollSubject                                        *
+     *            NavigateEvent                                           *
      *                                                                    *
      **********************************************************************/
 
@@ -35,14 +34,20 @@ cat << EOF
             ${v}EventRegistration.listener.addEventListener(
                 ${v}EventRegistration.eventType,
                 ${v}FiredEvt => {
-                    for (var ${v}Si=0;/*subject index*/
-                            ${v}Si<${v}EventStore.pollSubjects.length;${v}Si++){
-                        var ${v}TestSubject=${v}EventStore.pollSubjects[${v}Si];
+                    for (let ${v}Si=0;/*subject index*/
+                            ${v}Si<${!event_store}.pollSubjects.length;
+                            ${v}Si++) {
+                        let ${v}TestSubject = 
+                            ${!event_store}.pollSubjects[${v}Si];
                         if (${v}TestSubject.key === ${v}EventRegistration.key) {
                             if (${v}EventRegistration.eventType == 'navigate' &&
                                     ${v}EventRegistration.intercept &&
                                     (${v}FiredEvt as NavigateEvent).canIntercept) {
-                                (${v}FiredEvt as NavigateEvent).intercept({});
+                                let ${v}NavEvent =
+                                    (${v}FiredEvt as NavigateEvent);
+                                if (${v}NavEvent.navigationType != 'reload') {
+                                    ${v}NavEvent.intercept({});
+                                }
                             }
                             ${v}TestSubject.polled = true;
                             ${v}TestSubject.event = ${v}FiredEvt;
@@ -51,12 +56,12 @@ cat << EOF
                     }
                 }
             );
-            ${v}EventStore.pollSubjects.push({
+            ${!event_store}.pollSubjects.push({
                 event: null,
                 eventType: ${v}EventRegistration.eventType,
                 key: ${v}EventRegistration.key,
                 polled: false
-            } as EventPollSubject);
+            });
         }
     }
 
