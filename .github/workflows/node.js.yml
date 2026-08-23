@@ -38,6 +38,7 @@ jobs:
       working-directory: ./lib/src/test/typescript/com/koreyhinton/router
       run: npm ci
     - name: run vitest
+      working-directory: ./lib/src/test/typescript/com/koreyhinton/router
       run: |
         npm run test
         npm run coverage
