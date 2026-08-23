@@ -1,7 +1,8 @@
 #!/bin/bash
 
 v=${1}
-priv="${RANDOM}_"
+: "${priv:=${RANDOM}_}"
+
 # maps
 . ${NSMAP}/bind ${v} RouterConfig
 export ${v}regpar_RegexParamManifest=${v}Router
@@ -38,10 +39,14 @@ cat << EOF
     let ${v}${priv}RegexParams: RegexParam[] = [];
 
     for (const ${v}Route of ${v}RouterConfig.routes) {
-        const ${v}NormRoute = ${v}Route.startsWith('/')
-            ? ${v}Route
-            : '/' + ${v}Route;
-        ${v}${priv}regpar_RegexParamManifest.keyedPaths.push(${v}NormRoute);
+        if (${v}Route instanceof RegExp) {
+            ${v}${priv}regpar_RegexParamManifest.keyedPaths.push(${v}Route);
+        } else{
+            const ${v}NormRoute = ${v}Route.startsWith('/')
+                ? ${v}Route
+                : '/' + ${v}Route;
+            ${v}${priv}regpar_RegexParamManifest.keyedPaths.push(${v}NormRoute);
+        }
     }
 
     if (${v}${priv}regpar_RegexParamManifest.keyedPaths.length > 0) {
