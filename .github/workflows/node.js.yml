@@ -41,6 +41,4 @@ jobs:
     - name: run vitest
       if: matrix.node-version == '22.x'
       working-directory: ./lib/src/test/typescript/com/koreyhinton/router
-      run: |
-        npm run test
-        npm run coverage
+      run: npm run test

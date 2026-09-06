@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: "${ROUT_CFG_ROUT_TYPES:=string}"
+: "${ROUT_CFG_ROUT_TYPES:=string|RegExp}"
 
 cat << EOF
 
