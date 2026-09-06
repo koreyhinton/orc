@@ -5,4 +5,6 @@
 
 node_modules
 *.ts
+!vitest.config.ts
 *.kt
+lib/src/test/typescript/com/koreyhinton/router/coverage

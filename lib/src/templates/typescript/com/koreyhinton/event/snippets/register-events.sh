@@ -1,6 +1,7 @@
 #!/bin/bash
 
 : "${REG_EVT_WARN:=console.warn}"
+: "${REG_EVT_INJ:=}"
 
 v=${1}
 # maps
@@ -28,7 +29,7 @@ cat << EOF
 
     for (const ${v}EventRegistration of ${!event_store_config}.events) {
 
-        if (${v}EventRegistration.listener == null) {
+        if (${REG_EVT_INJ} ${v}EventRegistration.listener == null) {
             ${REG_EVT_WARN}("null listener, please pass in window, navigation, or element")
         } else {
             ${v}EventRegistration.listener.addEventListener(

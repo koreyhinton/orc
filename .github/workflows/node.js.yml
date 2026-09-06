@@ -28,9 +28,17 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: ./lib/src/test/typescript/com/koreyhinton/router/regexparam/package-lock.json
-    - name: install test dependencies
+    - name: install tape test dependencies
       working-directory: ./lib/src/test/typescript/com/koreyhinton/router/regexparam
       run: npm ci
-    - name: run test
+    - name: run tape test
       working-directory: ./lib/src/test/typescript/com/koreyhinton/router/regexparam
       run: ./run.sh
+    - name: install vitest dependencies
+      if: matrix.node-version == '22.x'
+      working-directory: ./lib/src/test/typescript/com/koreyhinton/router
+      run: npm ci
+    - name: run vitest
+      if: matrix.node-version == '22.x'
+      working-directory: ./lib/src/test/typescript/com/koreyhinton/router
+      run: npm run test
