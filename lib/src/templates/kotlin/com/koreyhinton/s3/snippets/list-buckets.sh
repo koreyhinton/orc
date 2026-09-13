@@ -1,15 +1,9 @@
 #!/bin/bash
 
-: "${S3_CLIENT:=software.amazon.awssdk.services.s3.S3Client}"
 : "${S3_CLIENT_BUILD_CLASS_FULL:=com.koreyhinton.s3.S3ClientBuild}"
-: "${S3_URL_CONN:=software.amazon.awssdk.http.urlconnection}"
-: "${S3_REG:=software.amazon.awssdk.regions.Region}"
-: "${S3_CRED:=software.amazon.awssdk.auth.credentials.AwsBasicCredentials}"
-: "${S3_CRED_PROV:=software.amazon.awssdk.auth.credentials.StaticCredentialsProvider}"
-: "${S3_URI:=java.net.URI}"
 : "${S3_ERR_LOG:=println}"
-
 v=${1}
+priv=${RANDOM}_
 # maps
 . ${NSMAP}/bind ${v} S3ClientBuild
 
@@ -17,15 +11,21 @@ cat << EOF
 
     /**********************************************************************
      *                                                                    *
-     *    s3 build-client                                                 *
+     *    s3 list-buckets                                                 *
      *                                                                    *
      *        command arg:                                                *
      *            |ns_|                                                   *
      *                                                                    *
-     *        input/output:                                               *
+     *        input:                                                      *
      *            |ns_|S3ClientBuild: S3ClientBuild                       *
      *                                                                    *
+     *        output:                                                     *
+     *            |ns_|S3BucketCsv: String                                *
+     *                                                                    *
      *        tested with:                                                *
+     *             implementation(                                        *
+     *                  "com.fasterxml.woodstox:woodstox-core:6.6.0")     *
+     *            implementation("javax.xml.stream:stax-api:1.0-2")       *
      *            implementation(                                         *
      *                platform("software.amazon.awssdk:bom:2.25.0"))      *
      *            implementation("software.amazon.awssdk:s3")             *
@@ -34,44 +34,29 @@ cat << EOF
      *                                                                    *
      **********************************************************************/
 
+    var ${v}S3BucketCsv = "";
     try {
-        ${S3_CLIENT_BUILD_CLASS_FULL}.client = ${S3_CLIENT}.builder()
-            .region(${S3_REG}.of(${!s3_client_build}.awsRegion))
-            .credentialsProvider(
-                ${S3_CRED_PROV}.create(
-                    ${S3_CRED}.create(
-                        ${!s3_client_build}.awsAccessKeyId,
-                        ${!s3_client_build}.awsSecretAccessKey
-                    )
-                )
-            )
-            .endpointOverride(${S3_URI}.create(${!s3_client_build}.awsUrl))
-            .httpClientBuilder(${S3_URL_CONN}.UrlConnectionHttpClient.builder())
-            .build()
-        ${!s3_client_build}.awsSecretAccessKey = null;
-        ${!s3_client_build}.awsAccessKeyId = null;
-        ${!s3_client_build}.awsUrl = null;
-        ${!s3_client_build}.awsRegion = null;
-        // ^listed in high to low null ordering (highest gets nulled out first)
+        val ${v}${priv}Response = ${S3_CLIENT_BUILD_CLASS_FULL}.client!!
+            .listBuckets();
+        ${v}${priv}Response.buckets().forEach { ${v}${priv}Bucket ->
+            if (${v}S3BucketCsv.length == 0)
+                ${v}S3BucketCsv = ${v}${priv}Bucket.name();
+            else
+                ${v}S3BucketCsv += "," + ${v}${priv}Bucket.name();
+        }
     } catch(${v}${priv}Exception: Exception) {
-        ${!s3_client_build}.awsSecretAccessKey = null;
-        ${!s3_client_build}.awsAccessKeyId = null;
-        ${!s3_client_build}.awsUrl = null;
-        ${!s3_client_build}.awsRegion = null;
-        // ^listed in high to low null ordering (highest gets nulled out first)
-
         ${S3_ERR_LOG}("Warning: " + ${v}${priv}Exception.javaClass.simpleName  +
-            " exception. Attempted to build s3 client " +
+            " exception. Attempted to list buckets " +
             " and failed with exception: " + ${v}${priv}Exception.message + "\n" +
             ${v}${priv}Exception.stackTraceToString())
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client faild to create, error: " + ${v}${priv}E + "\n" +
+        ${S3_ERR_LOG}("s3 client faild to list buckets, error: " + ${v}${priv}E.message + "\n" +
             ${v}${priv}E.stackTraceToString())
     }
 
     /**********************************************************************
      *                                                                    *
-     * :END: s3 build-client                                              *
+     * :END: s3 list-buckets                                              *
      *                                                                    *
      **********************************************************************/
 
