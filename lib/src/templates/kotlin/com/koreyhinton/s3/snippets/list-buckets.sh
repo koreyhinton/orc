@@ -50,7 +50,7 @@ cat << EOF
             " and failed with exception: " + ${v}${priv}Exception.message + "\n" +
             ${v}${priv}Exception.stackTraceToString())
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client faild to list buckets, error: " + ${v}${priv}E.message + "\n" +
+        ${S3_ERR_LOG}("s3 client failed to list buckets, error: " + ${v}${priv}E.message + "\n" +
             ${v}${priv}E.stackTraceToString())
     }
 

@@ -52,10 +52,10 @@ cat << EOF
             .build()
         ${S3_CLIENT_BUILD_CLASS_FULL}.client!!.putObject(
             ${v}${priv}Request,
-            ${S3_REQ_BODY}.fromString(${v}Text)
+            ${S3_REQ_BODY}.fromString(${!text})
         )
         ${v}S3ConfirmedFile.exists = true
-        ${v}S3ConfirmedFile.bytes = ${v}Text
+        ${v}S3ConfirmedFile.bytes = ${!text}
             .toByteArray(Charsets.UTF_8)
             .size
             .toLong()
@@ -64,7 +64,7 @@ cat << EOF
             " exception. Attempted to read s3 file text " + ${!s3_file}.name +
             " and failed with exception: " + ${v}Exception.message)
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client faild to read s3 file text, error: " + ${v}${priv}E + "\n" +
+        ${S3_ERR_LOG}("s3 client failed to read s3 file text, error: " + ${v}${priv}E + "\n" +
             ${v}${priv}E.stackTraceToString())
     }
 

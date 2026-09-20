@@ -49,7 +49,7 @@ cat << EOF
             " exception. Attempted to read s3 file text " + ${!s3_file}.name +
             " and failed with exception: " + ${v}Exception.message)
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client faild to read s3 file text, error: " + ${v}${priv}E + "\n" +
+        ${S3_ERR_LOG}("s3 client failed to read s3 file text, error: " + ${v}${priv}E + "\n" +
             ${v}${priv}E.stackTraceToString())
     }
 

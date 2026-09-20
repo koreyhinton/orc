@@ -65,7 +65,7 @@ cat << EOF
             " and failed with exception: " + ${v}${priv}Exception.message + "\n" +
             ${v}${priv}Exception.stackTraceToString())
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client faild to create, error: " + ${v}${priv}E + "\n" +
+        ${S3_ERR_LOG}("s3 client failed to create, error: " + ${v}${priv}E + "\n" +
             ${v}${priv}E.stackTraceToString())
     }
 
