@@ -53,6 +53,13 @@ cat << EOF
         ${!s3_client_build}.awsUrl = null;
         ${!s3_client_build}.awsRegion = null;
         // ^listed in high to low null ordering (highest gets nulled out first)
+        if (${S3_CLIENT_BUILD_CLASS_FULL}.client != null) {
+            // s3 client has shown to still build itself successfully even
+            // with incorrect values, so listBuckets is used to trigger an
+            // actual failure which then we can null out the client in the catch
+            // as a single source of failure check for the caller
+            ${S3_CLIENT_BUILD_CLASS_FULL}.client!!.listBuckets()
+        } // null client indicates connection failed
     } catch(${v}${priv}Exception: Exception) {
         ${!s3_client_build}.awsSecretAccessKey = null;
         ${!s3_client_build}.awsAccessKeyId = null;
@@ -60,6 +67,7 @@ cat << EOF
         ${!s3_client_build}.awsRegion = null;
         // ^listed in high to low null ordering (highest gets nulled out first)
 
+        ${S3_CLIENT_BUILD_CLASS_FULL}.client = null
         ${S3_ERR_LOG}("Warning: " + ${v}${priv}Exception.javaClass.simpleName  +
             " exception. Attempted to build s3 client " +
             " and failed with exception: " + ${v}${priv}Exception.message + "\n" +
