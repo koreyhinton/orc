@@ -1,28 +1,26 @@
 #!/bin/bash
 
 : "${S3_CLIENT_BUILD_CLASS_FULL:=com.koreyhinton.s3.S3ClientBuild}"
-: "${S3_CONFIRMED_FILE_CLASS_NS:=com.koreyhinton.s3.classes.S3ConfirmedFile}"
-: "${S3_HOR:=software.amazon.awssdk.services.s3.model.HeadObjectRequest}"
 : "${S3_ERR_LOG:=println}"
 v=${1}
+priv=${RANDOM}_
 # maps
-. ${NSMAP}/bind ${v} S3ClientBuild S3File S3ConfirmedFile
+. ${NSMAP}/bind ${v} S3ClientBuild
 
 cat << EOF
 
     /**********************************************************************
      *                                                                    *
-     *    s3 file-exists                                                  *
+     *    s3 list-buckets                                                 *
      *                                                                    *
      *        command arg:                                                *
      *            |ns_|                                                   *
      *                                                                    *
      *        input:                                                      *
-     *            |package.|S3ClientBuild: ../classes/S3ClientBuild.sh    *
-     *            |ns_|S3File: ../classes/S3File.sh                       *
+     *            |ns_|S3ClientBuild: S3ClientBuild                       *
      *                                                                    *
      *        output:                                                     *
-     *            |ns_|S3ConfirmedFile: ../classes/S3ConfirmedFile.sh     *
+     *            |ns_|S3BucketCsv: String                                *
      *                                                                    *
      *        tested with:                                                *
      *             implementation(                                        *
@@ -34,41 +32,31 @@ cat << EOF
      *            implementation(                                         *
      *                "software.amazon.awssdk:url-connection-client")     *
      *                                                                    *
-     *        todo: need to re-test with:                                 *
-     *            (or go back to commit 9f717d99 to avoid breaking change)*
-     *            implementation(                                         *
-     *                platform("software.amazon.awssdk:bom:2.25.0"))      *
-     *            implementation("software.amazon.awssdk:s3")             *
-     *            implementation("software.amazon.awssdk:apache-client")  *
-     *                                                                    *
      **********************************************************************/
 
-    var ${!s3_confirmed_file} = ${S3_CONFIRMED_FILE_CLASS_NS}(
-        bucket = ${!s3_file}.bucket,
-        name = ${!s3_file}.name,
-        exists = false,
-        bytes = 0
-    )
+    var ${v}S3BucketCsv = "";
     try {
-        val ${v}Request = ${S3_HOR}.builder()
-            .bucket(${!s3_file}.bucket)
-            .key(${!s3_file}.name)
-            .build()
-        var ${v}Response = ${S3_CLIENT_BUILD_CLASS_FULL}.client!!.headObject(${v}Request)
-        ${!s3_confirmed_file}.exists = true
-        ${!s3_confirmed_file}.bytes = ${v}Response.contentLength()
-    } catch(${v}Exception: Exception) {
-        ${S3_ERR_LOG}("Warning: " + ${v}Exception.javaClass.simpleName  +
-            " exception. Attempted to retrieve s3 file info " + ${!s3_file}.name +
-            " and failed with exception: " + ${v}Exception.message)
+        val ${v}${priv}Response = ${S3_CLIENT_BUILD_CLASS_FULL}.client!!
+            .listBuckets();
+        ${v}${priv}Response.buckets().forEach { ${v}${priv}Bucket ->
+            if (${v}S3BucketCsv.length == 0)
+                ${v}S3BucketCsv = ${v}${priv}Bucket.name();
+            else
+                ${v}S3BucketCsv += "," + ${v}${priv}Bucket.name();
+        }
+    } catch(${v}${priv}Exception: Exception) {
+        ${S3_ERR_LOG}("Warning: " + ${v}${priv}Exception.javaClass.simpleName  +
+            " exception. Attempted to list buckets " +
+            " and failed with exception: " + ${v}${priv}Exception.message + "\n" +
+            ${v}${priv}Exception.stackTraceToString())
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client failed to retrieve s3 file info, error: " + ${v}${priv}E + "\n" +
+        ${S3_ERR_LOG}("s3 client failed to list buckets, error: " + ${v}${priv}E.message + "\n" +
             ${v}${priv}E.stackTraceToString())
     }
 
     /**********************************************************************
      *                                                                    *
-     * :END: s3 file-exists                                               *
+     * :END: s3 list-buckets                                              *
      *                                                                    *
      **********************************************************************/
 
