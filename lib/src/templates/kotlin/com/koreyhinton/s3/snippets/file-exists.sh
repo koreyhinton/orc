@@ -3,6 +3,7 @@
 : "${S3_CLIENT_BUILD_CLASS_FULL:=com.koreyhinton.s3.S3ClientBuild}"
 : "${S3_CONFIRMED_FILE_CLASS_NS:=com.koreyhinton.s3.classes.S3ConfirmedFile}"
 : "${S3_HOR:=software.amazon.awssdk.services.s3.model.HeadObjectRequest}"
+: "${S3_NOKEY:=software.amazon.awssdk.services.s3.model.NoSuchKeyException}"
 : "${S3_ERR_LOG:=println}"
 v=${1}
 # maps
@@ -43,6 +44,9 @@ cat << EOF
      *                                                                    *
      **********************************************************************/
 
+    // don't falsely report file doesn't exist if the client isn't even created:
+    ${S3_CLIENT_BUILD_CLASS_FULL}.client!!
+
     var ${!s3_confirmed_file} = ${S3_CONFIRMED_FILE_CLASS_NS}(
         bucket = ${!s3_file}.bucket,
         name = ${!s3_file}.name,
@@ -57,13 +61,19 @@ cat << EOF
         var ${v}Response = ${S3_CLIENT_BUILD_CLASS_FULL}.client!!.headObject(${v}Request)
         ${!s3_confirmed_file}.exists = true
         ${!s3_confirmed_file}.bytes = ${v}Response.contentLength()
+    } catch (_: ${S3_NOKEY}) {
+        // No logging for this catch since it is implemented such that catching
+        // a no key exception is the expected control flow path for a file that
+        // doesn't exist.
     } catch(${v}Exception: Exception) {
         ${S3_ERR_LOG}("Warning: " + ${v}Exception.javaClass.simpleName  +
             " exception. Attempted to retrieve s3 file info " + ${!s3_file}.name +
             " and failed with exception: " + ${v}Exception.message)
+        throw ${v}Exception
     } catch (${v}${priv}E: Throwable) {
         ${S3_ERR_LOG}("s3 client failed to retrieve s3 file info, error: " + ${v}${priv}E + "\n" +
             ${v}${priv}E.stackTraceToString())
+        throw ${v}${priv}E
     }
 
     /**********************************************************************
