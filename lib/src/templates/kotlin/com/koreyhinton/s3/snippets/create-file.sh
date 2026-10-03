@@ -59,13 +59,16 @@ cat << EOF
             .toByteArray(Charsets.UTF_8)
             .size
             .toLong()
-    } catch(${v}Exception: Exception) {
-        ${S3_ERR_LOG}("Warning: " + ${v}Exception.javaClass.simpleName  +
-            " exception. Attempted to read s3 file text " + ${!s3_file}.name +
-            " and failed with exception: " + ${v}Exception.message)
+    } catch(${v}${priv}Exception: Exception) {
+        ${S3_ERR_LOG}("Warning: " + ${v}${priv}Exception.javaClass.simpleName  +
+            " exception. Attempted to write s3 file text " + ${!s3_file}.name +
+            " and failed with exception: " + ${v}${priv}Exception.message
+            + ${v}${priv}Exception.stackTraceToString())
+        throw ${v}${priv}Exception
     } catch (${v}${priv}E: Throwable) {
-        ${S3_ERR_LOG}("s3 client failed to read s3 file text, error: " + ${v}${priv}E + "\n" +
-            ${v}${priv}E.stackTraceToString())
+        ${S3_ERR_LOG}("s3 client failed to write s3 file text, error: " +
+            ${v}${priv}E + "\n" + ${v}${priv}E.stackTraceToString())
+        throw ${v}${priv}E
     }
 
     /**********************************************************************
