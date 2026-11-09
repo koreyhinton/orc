@@ -43,6 +43,21 @@ Here is an example of how you might forward from the backend:
     }
 ```
 
+For testing purposes you can add this file to redirect all traffic to
+index.html:
+
+./serve.json
+
+```json
+{
+  "rewrites": [
+    { "source": "**", "destination": "/index.html" }
+  ]
+}
+```
+
+(Or run `npx serve -s` instead, which does the same rewrite without a config file.)
+
 ## Example
 
 You must change these path variables inside `./build.sh`:
@@ -204,7 +219,7 @@ command line run
 chmod +x build.sh
 chmod +x src/main.sh
 chmod +x src/models.sh
-./build.sh && npx serve
+./build.sh && npx serve --config serve.json
 
 ```
 

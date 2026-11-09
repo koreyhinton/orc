@@ -1,17 +1,13 @@
 #!/bin/bash
 
+: "${S3_CLIENT_BUILD_CLASS_FULL:=com.koreyhinton.s3.S3ClientBuild}"
 : "${S3_CONFIRMED_FILE_CLASS_NS:=com.koreyhinton.s3.classes.S3ConfirmedFile}"
 : "${S3_HOR:=software.amazon.awssdk.services.s3.model.HeadObjectRequest}"
-: "${S3_CLIENT:=software.amazon.awssdk.services.s3.S3Client}"
-: "${S3_REG:=software.amazon.awssdk.regions.Region}"
-: "${S3_CRED:=software.amazon.awssdk.auth.credentials.AwsBasicCredentials}"
-: "${S3_CRED_PROV:=software.amazon.awssdk.auth.credentials.StaticCredentialsProvider}"
-: "${S3_URI:=java.net.URI}"
+: "${S3_NOKEY:=software.amazon.awssdk.services.s3.model.NoSuchKeyException}"
 : "${S3_ERR_LOG:=println}"
-: "${S3_SECRET_ENV_VAR:=System.getProperty}"
 v=${1}
 # maps
-. ${NSMAP}/bind ${v} S3File S3ConfirmedFile
+. ${NSMAP}/bind ${v} S3ClientBuild S3File S3ConfirmedFile
 
 cat << EOF
 
@@ -23,18 +19,33 @@ cat << EOF
      *            |ns_|                                                   *
      *                                                                    *
      *        input:                                                      *
-     *            |ns_|S3File (S3File, indirect)                          *
+     *            |package.|S3ClientBuild: ../classes/S3ClientBuild.sh    *
+     *            |ns_|S3File: ../classes/S3File.sh                       *
      *                                                                    *
      *        output:                                                     *
-     *            |ns_|S3ConfirmedFile (S3ConfirmedFile, indirect)        *
+     *            |ns_|S3ConfirmedFile: ../classes/S3ConfirmedFile.sh     *
      *                                                                    *
      *        tested with:                                                *
+     *             implementation(                                        *
+     *                  "com.fasterxml.woodstox:woodstox-core:6.6.0")     *
+     *            implementation("javax.xml.stream:stax-api:1.0-2")       *
+     *            implementation(                                         *
+     *                platform("software.amazon.awssdk:bom:2.25.0"))      *
+     *            implementation("software.amazon.awssdk:s3")             *
+     *            implementation(                                         *
+     *                "software.amazon.awssdk:url-connection-client")     *
+     *                                                                    *
+     *        todo: need to re-test with:                                 *
+     *            (or go back to commit 9f717d99 to avoid breaking change)*
      *            implementation(                                         *
      *                platform("software.amazon.awssdk:bom:2.25.0"))      *
      *            implementation("software.amazon.awssdk:s3")             *
      *            implementation("software.amazon.awssdk:apache-client")  *
      *                                                                    *
      **********************************************************************/
+
+    // don't falsely report file doesn't exist if the client isn't even created:
+    ${S3_CLIENT_BUILD_CLASS_FULL}.client!!
 
     var ${!s3_confirmed_file} = ${S3_CONFIRMED_FILE_CLASS_NS}(
         bucket = ${!s3_file}.bucket,
@@ -43,29 +54,26 @@ cat << EOF
         bytes = 0
     )
     try {
-        val ${v}S3Client = ${S3_CLIENT}.builder()
-            .region(${S3_REG}.of(${S3_SECRET_ENV_VAR}("AWS_REGION")))
-            .credentialsProvider(
-                ${S3_CRED_PROV}.create(
-                    ${S3_CRED}.create(
-                        ${S3_SECRET_ENV_VAR}("AWS_ACCESS_KEY_ID"),
-                        ${S3_SECRET_ENV_VAR}("AWS_SECRET_ACCESS_KEY")
-                    )
-                )
-            )
-            .endpointOverride(${S3_URI}.create(${S3_SECRET_ENV_VAR}("AWS_URL")))
-            .build()
         val ${v}Request = ${S3_HOR}.builder()
             .bucket(${!s3_file}.bucket)
             .key(${!s3_file}.name)
             .build()
-        var ${v}Response = ${v}S3Client.headObject(${v}Request)
+        var ${v}Response = ${S3_CLIENT_BUILD_CLASS_FULL}.client!!.headObject(${v}Request)
         ${!s3_confirmed_file}.exists = true
         ${!s3_confirmed_file}.bytes = ${v}Response.contentLength()
+    } catch (_: ${S3_NOKEY}) {
+        // No logging for this catch since it is implemented such that catching
+        // a no key exception is the expected control flow path for a file that
+        // doesn't exist.
     } catch(${v}Exception: Exception) {
         ${S3_ERR_LOG}("Warning: " + ${v}Exception.javaClass.simpleName  +
-            " exception. Attempted to retrieve s3 file " + ${!s3_file}.name +
+            " exception. Attempted to retrieve s3 file info " + ${!s3_file}.name +
             " and failed with exception: " + ${v}Exception.message)
+        throw ${v}Exception
+    } catch (${v}${priv}E: Throwable) {
+        ${S3_ERR_LOG}("s3 client failed to retrieve s3 file info, error: " + ${v}${priv}E + "\n" +
+            ${v}${priv}E.stackTraceToString())
+        throw ${v}${priv}E
     }
 
     /**********************************************************************
