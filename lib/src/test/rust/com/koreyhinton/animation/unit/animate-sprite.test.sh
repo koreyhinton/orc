@@ -182,5 +182,29 @@ mod tests {
         assert_eq!(paint(&hero), (32.0, 48.0, 32.0, 48.0));
         assert_eq!(paint(&villager), (0.0, 0.0, 32.0, 48.0));
     }
+
+    // An app with many units maps the sprite to an element, not a variable.
+    // The snippet must not hold a borrow of one field while it writes
+    // another, or indexing borrows the whole Vec twice (E0499) and this
+    // file doesn't compile.
+    #[test]
+    fn works_on_an_indexed_sprite() {
+        let walk = walk();
+        let idle = idle();
+        let mut sprites = vec![new_sprite(&walk), new_sprite(&idle)];
+
+        for i in 0..sprites.len() {
+            $(update mn_t_ 'sprites[i]')
+        }
+        sprites[0].frame_time += 0.2;
+        for i in 0..sprites.len() {
+            $(update mn_t_ 'sprites[i]')
+        }
+
+        assert_eq!(sprites[0].frame, 1);
+        assert_eq!(sprites[1].frame, 0);
+        assert_eq!(paint(&sprites[0]), (32.0, 48.0, 32.0, 48.0));
+        assert_eq!(paint(&sprites[1]), (0.0, 0.0, 32.0, 48.0));
+    }
 }
 EOF
