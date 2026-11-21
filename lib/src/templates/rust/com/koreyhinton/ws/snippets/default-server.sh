@@ -17,7 +17,8 @@ priv=${RANDOM}_
 
 cat << EOF
 
-    let mut ${!server}: Option<String> = None;
+    // declared here and set once, by whichever platform block is compiled
+    let ${!server}: Option<String>;
     #[cfg(not(target_arch = "wasm32"))]
     {
         let args: Vec<String> = std::env::args().collect();

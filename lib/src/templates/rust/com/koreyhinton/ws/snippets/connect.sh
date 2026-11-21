@@ -34,6 +34,8 @@ cat << EOF
             url.to_string()
         }
     };
+    // only desktop sets it up here; the browser does in read.sh
+    #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
     let mut ${!ws} = ${WS_CLIENT_TYPE} {
         #[cfg(not(target_arch = "wasm32"))]
         socket: None,
