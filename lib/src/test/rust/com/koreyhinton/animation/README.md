@@ -13,11 +13,15 @@ lib/src/test/rust/com/koreyhinton/animation/run.sh
 
 Requires bash and a Rust toolchain (`cargo`). There are no crate dependencies.
 
-`run.sh` sets `ORC_ANIMATION` and `NSMAP` from its own location, generates
+`run.sh` sets `ORC_ANIMATION` and `NSMAP` from its own location, runs
+`unit/models-version.check.sh` (which checks that `models.sh` refuses any
+version but the one in `version.sh`, so an app asking for the wrong orc
+version fails to generate), generates
 `src/lib.rs` from `unit/animate-sprite.test.sh`, then runs `cargo test` with
 `RUSTFLAGS="-D warnings"`, so a warning in the generated code fails the run.
-If the unit tests pass, it then runs the mutation tests (`mutate.sh`). It
-exits 0 only if both pass.
+If the unit tests pass, it then runs the mutation tests (`mutate.sh`). A
+failed version check doesn't stop the Rust tests from running, but the run
+exits 0 only if everything passes.
 
 To run one test, run `run.sh` once to generate `src/lib.rs`, then call cargo
 from this folder with a test name filter. This skips the mutation tests:
@@ -64,6 +68,7 @@ in the tests.
 | `run.sh` | generates the tests and runs them, then `mutate.sh` |
 | `mutate.sh` | runs the tests against mutated copies of the snippet |
 | `unit/animate-sprite.test.sh` | prints the tests as one Rust file, with `models.sh` and the snippet inlined |
+| `unit/models-version.check.sh` | checks `models.sh` against `version.sh` (bash, prints no Rust) |
 | `Cargo.toml` | the test crate |
 | `src/`, `target/`, `Cargo.lock` | generated, gitignored |
 

@@ -15,6 +15,11 @@ export NSMAP="${RN_RT}/lib/src/main/bash/com/koreyhinton/nsmap"
 
 cd "${RN_DIR}" || exit 1
 
+# models.sh must refuse the wrong version. Keep going on a failure, so the
+# run still reports the Rust tests, but fail the run at the end.
+./unit/models-version.check.sh
+RN_CHECK_EC=$?
+
 mkdir -p src
 set -o pipefail
 ./unit/animate-sprite.test.sh > ./src/lib.rs || exit 1
@@ -24,4 +29,6 @@ RUSTFLAGS="-D warnings" cargo test || exit $?
 
 # then check the tests catch bugs (mutate.sh repeats the unit tests as its
 # baseline, so only run it once they pass)
-./mutate.sh
+./mutate.sh || exit $?
+
+exit ${RN_CHECK_EC}
