@@ -50,10 +50,6 @@ cat << EOF
     let ${v}${priv}IncrementFrame = !${v}${priv}AnimationSwapped &&
         ${!animated_sprite}.frame_time > 1. / ${!animated_sprite}.animation.fps;
 
-    let ${v}${priv}PaintFrame = ${!animated_sprite}.paint_frame.get_or_insert(
-        PaintFrame { x: 0.0, y: 0.0, w: 0.0, h: 0.0 }
-    );
-
     if ${v}${priv}AnimationSwapped {
         ${!animated_sprite}.frame = 0;
         ${!animated_sprite}.frame_time = 0.0;
@@ -67,10 +63,15 @@ cat << EOF
         ${!animated_sprite}.frame_time = 0.0;
     }
 
-    ${v}${priv}PaintFrame.x = ${!animated_sprite}.w * ${!animated_sprite}.frame as f32;
-    ${v}${priv}PaintFrame.y = ${!animated_sprite}.h * ${!animated_sprite}.animation.row as f32;
-    ${v}${priv}PaintFrame.w = ${!animated_sprite}.w;
-    ${v}${priv}PaintFrame.h = ${!animated_sprite}.h;
+    // Set in one statement, so no borrow of paint_frame is held while other
+    // fields are written. That keeps it compiling when the sprite is an
+    // indexed element, such as sprites[i].
+    ${!animated_sprite}.paint_frame = Some(PaintFrame {
+        x: ${!animated_sprite}.w * ${!animated_sprite}.frame as f32,
+        y: ${!animated_sprite}.h * ${!animated_sprite}.animation.row as f32,
+        w: ${!animated_sprite}.w,
+        h: ${!animated_sprite}.h,
+    });
 
     /**********************************************************************
      *                                                                    *

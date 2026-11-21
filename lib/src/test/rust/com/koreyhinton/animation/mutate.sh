@@ -44,7 +44,7 @@ mutant "a swap doesn't block a step" \
 mutant "no frames > 0 guard" \
     's/ && [^ ]*\.animation\.frames > 0//'
 mutant "paint w and h swapped" \
-    's/PaintFrame\.w = \(.*\)\.w;/PaintFrame.w = \1.h;/; s/PaintFrame\.h = \(.*\)\.h;/PaintFrame.h = \1.w;/'
+    's/^\( *\)w: \(.*\)\.w,$/\1w: \2.h,/; s/^\( *\)h: \(.*\)\.h,$/\1h: \2.w,/'
 
 mkdir -p "${RN_TMP}/crate/src"
 cp "${RN_DIR}/Cargo.toml" "${RN_TMP}/crate/"
