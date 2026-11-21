@@ -1,7 +1,15 @@
 #!/bin/bash
 
-v=$1
-# maps
+# animation models
+#
+#   command arg:  <version>, the orc animation version the app expects
+#   prints:       the types the animation snippets use
+#
+#   Call it between heredocs, not in backticks, so a version mismatch stops
+#   the app's script:
+#       ${ORC_ANIMATION}/models.sh 0.1.0 || exit 1
+
+. "$(dirname "${BASH_SOURCE[0]}")/version.sh" "${1}"
 
 cat << EOF
 

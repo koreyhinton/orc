@@ -39,16 +39,18 @@ cargo test swap
 lib/src/test/rust/com/koreyhinton/animation/mutate.sh
 ```
 
-`mutate.sh` checks that the unit tests catch bugs. Each mutant is a copy of
-the animation library with one `sed` edit to the snippet that adds a bug
-(such as never updating `last_animation_id`). For each mutant the unit tests
-should fail, which means it's killed. It prints one line per mutant:
+`mutate.sh` checks that the tests catch bugs. Each mutant is a copy of the
+animation library with one `sed` edit to one of its files that adds a bug:
+in the snippet (such as never updating `last_animation_id`), or in the
+version check (such as `models.sh` skipping it, or `version.sh` not exiting
+on a mismatch). For each mutant the version check or a unit test should
+fail, which means it's killed. It prints one line per mutant:
 
 | Result | Meaning |
 | --- | --- |
 | `killed` | a test failed on the mutant (good), followed by the tests that failed |
 | `SURVIVED` | every test passed: the tests miss that bug, so add or strengthen one |
-| `STALE` | the `sed` no longer changes the snippet, so update it to match the snippet's current text |
+| `STALE` | the `sed` no longer changes its file, so update it to match the file's current text |
 | `BROKEN` | the mutant doesn't build, so the edit proves nothing; change it so it builds |
 
 It first checks that the unmutated library passes. It exits 0 only if every
@@ -56,10 +58,13 @@ mutant is killed. It builds in a temp copy of the crate (sharing
 `target/mutants`), so it doesn't touch `src/lib.rs`, and without
 `-D warnings`, since a mutation can leave a variable unused.
 
-To add a mutant, add a `mutant "<name>" '<sed script>'` line in `mutate.sh`.
-Pick bugs the tests can actually catch: for example, `>` to `>=` on the
-frame interval would always survive, since frame time is never exactly 0.1s
-in the tests.
+To add a mutant, add a `mutant "<name>" <file> '<sed script>'` line in
+`mutate.sh`, where `<file>` is relative to the library folder (such as
+`models.sh`, or `"${MT_SNIPPET}"` for the snippet). Pick bugs the tests can
+actually catch: for example, `>` to `>=` on the frame interval would always
+survive, since frame time is never exactly 0.1s in the tests. Changing the
+version in `version.sh` would survive too, on purpose: the version check
+reads the version from there, so a bump doesn't break it.
 
 ## Layout
 
