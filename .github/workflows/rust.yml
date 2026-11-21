@@ -19,3 +19,6 @@ jobs:
     - name: run animation unit and mutation tests
       working-directory: ./lib/src/test/rust/com/koreyhinton/animation
       run: ./run.sh
+    - name: run ws client tests
+      working-directory: ./lib/src/test/rust/com/koreyhinton/ws
+      run: ./run.sh
