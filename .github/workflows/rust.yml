@@ -1,0 +1,21 @@
+# Generates rust code from the orc rust snippets and runs its tests
+
+name: Rust CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  rust:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout using actions/checkout@v4
+      uses: actions/checkout@v4
+    - name: run animation unit and mutation tests
+      working-directory: ./lib/src/test/rust/com/koreyhinton/animation
+      run: ./run.sh

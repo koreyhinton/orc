@@ -5,7 +5,8 @@ orc generates imperative code from bash. A library here is a set of snippets: ba
 ## Layout
 
 - Snippets: `lib/src/templates/{lang}/com/koreyhinton/{lib}/snippets/{snippet}.sh`, with a `README.md` in `{lib}/`.
-- Library root: `{lib}/version.sh` (the version and its check), `{lib}/models.sh` (the library's types, if it has any), and `{lib}/snippets/import.sh` (its imports).
+- Credited snippets: a snippet adapted from another project's code goes one level deeper, in a folder named after that project, with the project's license file copied verbatim next to it: `snippets/{project}/{snippet}.sh` and `snippets/{project}/LICENSE-MIT` (see the rust animation library's `snippets/macroquad/`). Credit the project in the snippet's bash header and in the comment it prints into the generated code, since the generated code is what ships in apps: name the project and the file adapted, then its copyright line and license, and point to the license file. Snippets written from scratch stay in `snippets/`. The router's `regexparam/` folder came before this rule.
+- Library root: `{lib}/version.sh` (the version and its check), `{lib}/models.sh` (the library's types, if it has any), and optionally `{lib}/snippets/import.sh` (its imports; see "Version and imports").
 - Namespace binding: `lib/src/main/bash/com/koreyhinton/nsmap/` (`bind`, `nsmap`, `nsremap`, `symbolize`). Apps set `NSMAP` to this folder.
 - Tests: `lib/src/test/{lang}/com/koreyhinton/{lib}/`.
 - Each library gets an environment variable pointing at its folder, named `ORC_{LIB}` (`ORC_WS`, `ORC_ROUTER`). Apps call snippets through it: `` ` ${ORC_WS}/snippets/read-frame.sh ${v}pl_ ` ``.
@@ -71,25 +72,34 @@ List settings in the header and the library README.
 
 A library that has its own types (structs, classes, interfaces) prints all of them from one `{lib}/models.sh <version>`, not one script per type. The app makes one call and doesn't need to know the type names, including types only the library creates. See `lib/src/templates/go/com/koreyhinton/ws/models.sh`.
 
-- It checks the version like `import.sh` does.
+- It checks the version (see "Version and imports").
 - It prints a whole file in the target language, with its own package or module line and its own imports, so the types' imports never mix with the app's. The app writes it to its own generated file (`ws_models.go`).
+- Rust is the exception: `models.sh` prints just the type definitions, with no module line or imports, and the app inlines them where it wants them, between heredocs in its own generated file (everkeep puts them near the top of `main.rs`). A Rust app is often one generated file, and inlined types need no `mod`, `use` or `pub`. Type names still come from settings, so an app can rename one on a clash (see `lib/src/templates/rust/com/koreyhinton/animation/models.sh`).
 - Type names are package-level, so they can't use `${v}${priv}`. Give each type a fixed name that's clearly the library's (`WsConn`), and make it a setting so an app can rename it on a clash: `: "${WS_CONN_TYPE:=WsConn}"`. Every snippet that uses the type sets the same default. The package name is a setting too (`WS_PACKAGE`).
 - A type shows up in snippet headers as the type of an input or output (`|ns_|Ws  *WsConn (from upgrade)`). Prefer passing one value of a library type over binding several related values separately.
 - If the library grows many types, `models.sh` can be split into smaller scripts inside the library later; apps still make the one call.
 
 ## Version and imports
 
-Each library keeps its version in `{lib}/version.sh` (see `lib/src/templates/go/com/koreyhinton/ws/version.sh`). `models.sh` and `snippets/import.sh` both source it with the version the app asks for, so there's one place to bump:
+Each library keeps its version in `{lib}/version.sh` (see `lib/src/templates/go/com/koreyhinton/ws/version.sh` or `lib/src/templates/rust/com/koreyhinton/animation/version.sh`). `models.sh`, and `snippets/import.sh` if the library has one, source it with the version the app asks for, so there's one place to bump:
 
 - It holds the library's version, `ORC_{LIB}_V="0.1.0"`.
 - It takes the version the app asks for as `$1`. If they differ (compare as strings, with `!=`, not `-ne`), it prints an error to stderr and exits 1, which exits the script that sourced it.
 
-`snippets/import.sh <version>`:
+An app has to call `models.sh` before it can use the library's snippets, since they need its types, so `models.sh` alone is enough to check the version. A library with neither types nor an `import.sh` has no version check yet; add one to whichever script apps call first if that's needed.
+
+### Imports
+
+orc libraries don't wrap third-party libraries. A snippet uses a third-party API (such as macroquad's) directly, as the app's own code would, and the app imports what it uses itself. That keeps the generated code readable, and an app can still write its own wrapper snippets where it wants one. So a new library doesn't need `import.sh`: list what each snippet needs in its header's `imports:` line and in the README, and the app adds those imports. The rust animation library has no `import.sh`.
+
+A library may still provide `snippets/import.sh <version>` (ws does):
 
 - After the version check, it prints a comment with the library and version, then every import or dependency the library's snippets need, each with a comment naming which snippets need it (`"time" // orc dependency (read-request, upgrade, write-json)`). Use the target language's comment and import syntax.
 - Keep it in sync with the `imports:` line in every snippet's header. The app must not list these imports itself: the library provides them.
 
-Apps call `import.sh` between heredocs, not in backticks, so a mismatch stops the app's script, and the build with `pipefail`. Keep the version the app asks for in one place in the app (sharecmd exports `ORC_WS_VERSION` from `build.sh`):
+### Calling them from an app
+
+Apps call `models.sh` and `import.sh` between heredocs, not in backticks, so a version mismatch stops the app's script, and the build with `pipefail`. In backticks, the error is printed but the script carries on, and the build fails later with confusing errors about missing types. Keep the version the app asks for in one place in the app (sharecmd exports `ORC_WS_VERSION` from `build.sh`, and everkeep exports `ORC_ANIMATE_VERSION` from `orc-env.sh`):
 
 ```bash
 cat << EOF
@@ -104,7 +114,9 @@ cat << EOF
 EOF
 ```
 
-Don't bump the version while a library is unpublished: changes before its first release ship as that first version. After it's published, bump it (semver) whenever a snippet, `models.sh` or `import.sh` changes:
+### Bumping the version
+
+Don't bump the version while a library is unpublished: changes before its first release ship as that first version. After it's published, bump it (semver) whenever a snippet, `models.sh` or `import.sh` (if any) changes:
 
 - **Major:** a change apps have to adapt to. That means a renamed, removed or retyped binding, a removed snippet or setting, or a change to what an output means.
 - **Minor:** a new snippet, binding, setting, type or import that existing apps don't have to use.
@@ -119,7 +131,8 @@ Each library's `README.md` covers:
 - what it doesn't handle yet
 - how to call a snippet with a namespace
 - its settings
-- how to use `import.sh`
+- the imports an app adds for its snippets, or how to use `import.sh` if it has one
+- credits for any adapted code, and where their license files are
 - a full example
 
 Check the example by generating code from it and compiling that code. For Go, run `gofmt` and `go vet`.
