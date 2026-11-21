@@ -5,7 +5,11 @@
 #   Adapted from macroquad's src/experimental/animation.rs
 #   (AnimatedSprite::update and AnimatedSprite::frame),
 #   Copyright (c) 2019-2021 Fedor Logachev, MIT License. See LICENSE-MIT.
+#
+#   settings:     ANIMATION_PAINT_FRAME_FULLY_QUALIFIED  default PaintFrame
+#                 (the same as for models.sh)
 
+: "${ANIMATION_PAINT_FRAME_FULLY_QUALIFIED:=PaintFrame}"
 v=$1
 priv=${RANDOM}_
 # maps
@@ -29,6 +33,7 @@ cat << EOF
      *                                                                    *
      *        required model types (models.sh):                           *
      *            Animation, AnimatedSprite, PaintFrame                   *
+     *            (renamed by the ANIMATION_*_FULLY_QUALIFIED settings)   *
      *                                                                    *
      *        Steps the frame at animation.fps, restarts at frame 0 when  *
      *        animation.id changes, and sets paint_frame to the source    *
@@ -66,7 +71,7 @@ cat << EOF
     // Set in one statement, so no borrow of paint_frame is held while other
     // fields are written. That keeps it compiling when the sprite is an
     // indexed element, such as sprites[i].
-    ${!animated_sprite}.paint_frame = Some(PaintFrame {
+    ${!animated_sprite}.paint_frame = Some(${ANIMATION_PAINT_FRAME_FULLY_QUALIFIED} {
         x: ${!animated_sprite}.w * ${!animated_sprite}.frame as f32,
         y: ${!animated_sprite}.h * ${!animated_sprite}.animation.row as f32,
         w: ${!animated_sprite}.w,

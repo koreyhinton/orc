@@ -48,10 +48,14 @@ lib/src/test/rust/com/koreyhinton/animation/mutate.sh
 
 `mutate.sh` checks that the tests catch bugs. Each mutant is a copy of the
 animation library with one `sed` edit to one of its files that adds a bug:
-in the snippet (such as never updating `last_animation_id`), or in the
-version check (such as `models.sh` skipping it, or `version.sh` not exiting
-on a mismatch). For each mutant the version check or a unit test should
-fail, which means it's killed. It prints one line per mutant:
+in the snippet (such as never updating `last_animation_id`), in the version
+check (such as `models.sh` skipping it, or `version.sh` not exiting on a
+mismatch), or in the type-name settings (such as `models.sh` hardcoding
+`PaintFrame` instead of using its setting). For each mutant the version
+check, the type-name test or a unit test should fail, which means it's
+killed. A type-name mutant is killed by `type_names` failing to compile, and
+the result lists the error codes (such as E0428). It prints one line per
+mutant:
 
 | Result | Meaning |
 | --- | --- |
@@ -60,8 +64,24 @@ fail, which means it's killed. It prints one line per mutant:
 | `STALE` | the `sed` no longer changes its file, so update it to match the file's current text |
 | `BROKEN` | the mutant doesn't build, so the edit proves nothing; change it so it builds |
 
-It first checks that the unmutated library passes. It exits 0 only if every
-mutant is killed. It builds in a temp copy of the crate (sharing
+It first checks that the unmutated library passes.
+
+Then it runs the controls. A control is a copy of a test with one `sed` edit,
+run against the real library, that must fail with a given error. It checks
+that the test can fail for the reason it exists: without its
+`ANIMATION_*_FULLY_QUALIFIED` exports, the type-name test must hit the name
+clash (E0428). If it didn't, the test would pass whether or not the settings
+work. It prints one line per control:
+
+| Result | Meaning |
+| --- | --- |
+| `failed` | the edited test failed with the expected error (good) |
+| `PASSED` | the edited test passed, so the test can't catch what it's for |
+| `WRONG` | the edited test failed, but not with the expected error |
+| `STALE`, `BROKEN` | as for mutants: the `sed` changed nothing, or the edited test doesn't generate |
+
+It exits 0 only if every mutant is killed and every control fails as
+expected. It builds in a temp copy of the crate (sharing
 `target/mutants`), so it doesn't touch `src/lib.rs`, and without
 `-D warnings`, since a mutation can leave a variable unused.
 
@@ -72,6 +92,10 @@ actually catch: for example, `>` to `>=` on the frame interval would always
 survive, since frame time is never exactly 0.1s in the tests. Changing the
 version in `version.sh` would survive too, on purpose: the version check
 reads the version from there, so a bump doesn't break it.
+
+To add a control, add a `control "<name>" <test file> '<sed script>' <cargo
+test target> '<error>'` line, where `<test file>` is relative to this folder
+(such as `unit/type-names.test.sh`).
 
 ## Layout
 

@@ -2,9 +2,16 @@
 
 # Mutation tests for the animation library. Each mutant is a copy of the
 # library with one sed edit to one of its files, a bug the tests should catch.
-# The tests are the version check (unit/models-version.check.sh) and the Rust
-# unit tests. A mutant is killed (good) when a test fails on it, and survives
-# (bad) when they all pass. Exits 1 unless every mutant is killed.
+# The tests are the version check (unit/models-version.check.sh), the
+# type-name test (unit/type-names.test.sh) and the Rust unit tests. A mutant
+# is killed (good) when a test fails on it, and survives (bad) when they all
+# pass.
+#
+# Then each control is a copy of a test with one sed edit, run against the
+# real library, that must fail with a given error. It shows the test can
+# fail for the reason it exists: the type-name test without its settings
+# must hit the name clash (E0428). Exits 1 unless every mutant is killed and
+# every control fails as expected.
 #
 # Mutants are built in a temp copy of this crate, so src/lib.rs (from run.sh)
 # is left alone. They build without -D warnings, since a mutation can leave a
@@ -23,6 +30,9 @@ RN_TMP="$(mktemp -d)"
 trap 'rm -rf "${RN_TMP}"' EXIT
 
 export NSMAP="${RN_RT}/lib/src/main/bash/com/koreyhinton/nsmap"
+# use the default type names, unless a test sets its own
+unset ANIMATION_ANIMATION_FULLY_QUALIFIED ANIMATION_ANIMATED_SPRITE_FULLY_QUALIFIED \
+    ANIMATION_PAINT_FRAME_FULLY_QUALIFIED
 # share build artifacts across mutants, apart from run.sh's
 export CARGO_TARGET_DIR="${RN_DIR}/target/mutants"
 
@@ -59,17 +69,44 @@ mutant "version.sh doesn't exit on a mismatch" version.sh \
 mutant "version.sh compares with -ne, not !=" version.sh \
     's/ != / -ne /'
 
-mkdir -p "${RN_TMP}/crate/src"
+# the type-name settings: each name must come from its setting
+mutant "models.sh ignores the Animation name setting" models.sh \
+    's/struct \${ANIMATION_ANIMATION_FULLY_QUALIFIED} {/struct Animation {/'
+mutant "models.sh ignores the AnimatedSprite name setting" models.sh \
+    's/struct \${ANIMATION_ANIMATED_SPRITE_FULLY_QUALIFIED}</struct AnimatedSprite</'
+mutant "models.sh ignores the PaintFrame name setting" models.sh \
+    's/struct \${ANIMATION_PAINT_FRAME_FULLY_QUALIFIED} {/struct PaintFrame {/'
+mutant "animate-sprite ignores the PaintFrame name setting" "${MT_SNIPPET}" \
+    's/Some(\${ANIMATION_PAINT_FRAME_FULLY_QUALIFIED} {/Some(PaintFrame {/'
+
+# controls: a name, the test generator to edit, the sed script to apply, the
+# cargo test target it generates, and the error it must then fail with
+CT_NAMES=()
+CT_FILES=()
+CT_SEDS=()
+CT_TARGETS=()
+CT_ERRORS=()
+control() { CT_NAMES+=("$1"); CT_FILES+=("$2"); CT_SEDS+=("$3"); CT_TARGETS+=("$4"); CT_ERRORS+=("$5"); }
+
+control "type-name test without its settings clashes" unit/type-names.test.sh \
+    '/^export ANIMATION_.*_FULLY_QUALIFIED=/d' type_names 'E0428'
+
+mkdir -p "${RN_TMP}/crate/src" "${RN_TMP}/crate/tests"
 cp "${RN_DIR}/Cargo.toml" "${RN_TMP}/crate/"
 
 # test_lib <lib dir> <log>: run the version check against a library, then
-# generate the Rust tests against it and run them
+# generate the Rust tests against it and run them. The type-name test's
+# compile failing is a kill (a name clash), but the unit tests' is a broken
+# mutant.
 test_lib() {
     ORC_ANIMATION="$1" "${RN_DIR}/unit/models-version.check.sh" > "$2" 2>&1 || return 1
     ORC_ANIMATION="$1" "${RN_DIR}/unit/animate-sprite.test.sh" \
         > "${RN_TMP}/crate/src/lib.rs" 2>> "$2" || return 3
-    (cd "${RN_TMP}/crate" && cargo test --no-run -q) >> "$2" 2>&1 || return 2
-    (cd "${RN_TMP}/crate" && cargo test -q) >> "$2" 2>&1 || return 1
+    ORC_ANIMATION="$1" "${RN_DIR}/unit/type-names.test.sh" \
+        > "${RN_TMP}/crate/tests/type_names.rs" 2>> "$2" || return 3
+    (cd "${RN_TMP}/crate" && cargo test --lib --no-run -q) >> "$2" 2>&1 || return 2
+    (cd "${RN_TMP}/crate" && cargo test --test type_names -q) >> "$2" 2>&1 || return 1
+    (cd "${RN_TMP}/crate" && cargo test --lib -q) >> "$2" 2>&1 || return 1
     return 0
 }
 
@@ -102,9 +139,16 @@ for i in "${!MT_NAMES[@]}"; do
     test_lib "${RN_TMP}/lib" "${log}"
     case $? in
         1)
-            # the failed version checks, or cargo's list of failing tests
-            killers=$(sed -n -e 's/^FAILED  \([^:]*\):.*/\1/p' \
-                -e 's/^    tests::\([a-z0-9_]*\)$/\1/p' "${log}" | sort -u | paste -sd ',' | sed 's/,/, /g')
+            # the failed version checks, the type-name test with its error
+            # codes, or cargo's list of failing unit tests
+            killers=$( {
+                sed -n 's/^FAILED  \([^:]*\):.*/\1/p' "${log}"
+                if grep -q '^error.*type_names' "${log}"; then
+                    codes=$(grep -o 'E0[0-9]\{3\}' "${log}" | sort -u | paste -sd ' ')
+                    echo "type_names${codes:+ (${codes})}"
+                fi
+                sed -n 's/^    tests::\([a-z0-9_]*\)$/\1/p' "${log}"
+            } | sort -u | paste -sd ',' | sed 's/,/, /g')
             echo "killed    ${name}"
             echo "              by: ${killers}"
             ;;
@@ -121,4 +165,44 @@ for i in "${!MT_NAMES[@]}"; do
 done
 
 echo "${#MT_NAMES[@]} mutants, $((${#MT_NAMES[@]} - RN_BAD)) killed, ${RN_BAD} not"
-[[ ${RN_BAD} -eq 0 ]]
+
+# controls: run the edited test against the real library
+RN_CT_BAD=0
+for i in "${!CT_NAMES[@]}"; do
+    name="${CT_NAMES[$i]}"
+    file="${CT_FILES[$i]}"
+    target="${CT_TARGETS[$i]}"
+    want="${CT_ERRORS[$i]}"
+    log="${RN_TMP}/control-${i}.log"
+    gen="${RN_TMP}/control-${i}.sh"
+    sed "${CT_SEDS[$i]}" "${RN_DIR}/${file}" > "${gen}"
+
+    if cmp -s "${RN_DIR}/${file}" "${gen}"; then
+        echo "STALE     ${name}: its sed no longer changes ${file}"
+        RN_CT_BAD=$((RN_CT_BAD + 1))
+        continue
+    fi
+
+    # an empty generated file would compile and pass, so check it ran
+    if ! ORC_ANIMATION="${RN_LIB}" bash "${gen}" > "${RN_TMP}/crate/tests/${target}.rs" 2> "${log}"; then
+        echo "BROKEN    ${name}: the edited ${file} doesn't generate"
+        sed 's/^/              /' "${log}" | head -20
+        RN_CT_BAD=$((RN_CT_BAD + 1))
+        continue
+    fi
+
+    if (cd "${RN_TMP}/crate" && cargo test --test "${target}" -q) >> "${log}" 2>&1; then
+        echo "PASSED    ${name}: the edited test passes, so it can't catch this"
+        RN_CT_BAD=$((RN_CT_BAD + 1))
+    elif grep -q "${want}" "${log}"; then
+        echo "failed    ${name}"
+        echo "              with: ${want}"
+    else
+        echo "WRONG     ${name}: it failed, but without ${want}"
+        sed 's/^/              /' "${log}" | head -20
+        RN_CT_BAD=$((RN_CT_BAD + 1))
+    fi
+done
+
+echo "${#CT_NAMES[@]} controls, $((${#CT_NAMES[@]} - RN_CT_BAD)) failed as expected, ${RN_CT_BAD} not"
+[[ ${RN_BAD} -eq 0 && ${RN_CT_BAD} -eq 0 ]]
