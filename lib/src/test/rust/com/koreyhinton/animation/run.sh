@@ -20,15 +20,24 @@ cd "${RN_DIR}" || exit 1
 ./unit/models-version.check.sh
 RN_CHECK_EC=$?
 
-mkdir -p src
+mkdir -p src tests
 set -o pipefail
 ./unit/animate-sprite.test.sh > ./src/lib.rs || exit 1
+./unit/type-names.test.sh > ./tests/type_names.rs || exit 1
 
 # warnings in the generated code fail the run
-RUSTFLAGS="-D warnings" cargo test || exit $?
+export RUSTFLAGS="-D warnings"
+
+# The type-name test is its own crate, and a name clash fails its whole
+# compile, so run it apart from the unit tests and fail the run at the end.
+cargo test --test type_names
+RN_NAMES_EC=$?
+
+cargo test --lib || exit $?
 
 # then check the tests catch bugs (mutate.sh repeats the unit tests as its
 # baseline, so only run it once they pass)
+unset RUSTFLAGS
 ./mutate.sh || exit $?
 
-exit ${RN_CHECK_EC}
+[[ ${RN_CHECK_EC} -eq 0 && ${RN_NAMES_EC} -eq 0 ]]

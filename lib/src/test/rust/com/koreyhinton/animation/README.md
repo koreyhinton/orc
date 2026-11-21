@@ -1,6 +1,6 @@
 # animation tests
 
-Unit and mutation tests for the rust animation library's `animate-sprite`
+Unit, type-name and mutation tests for the rust animation library's `animate-sprite`
 snippet (`lib/src/templates/rust/com/koreyhinton/animation`).
 
 ## Run
@@ -16,19 +16,26 @@ Requires bash and a Rust toolchain (`cargo`). There are no crate dependencies.
 `run.sh` sets `ORC_ANIMATION` and `NSMAP` from its own location, runs
 `unit/models-version.check.sh` (which checks that `models.sh` refuses any
 version but the one in `version.sh`, so an app asking for the wrong orc
-version fails to generate), generates
-`src/lib.rs` from `unit/animate-sprite.test.sh`, then runs `cargo test` with
-`RUSTFLAGS="-D warnings"`, so a warning in the generated code fails the run.
-If the unit tests pass, it then runs the mutation tests (`mutate.sh`). A
-failed version check doesn't stop the Rust tests from running, but the run
-exits 0 only if everything passes.
+version fails to generate), and generates the Rust tests:
+
+- `src/lib.rs` from `unit/animate-sprite.test.sh`: the unit tests.
+- `tests/type_names.rs` from `unit/type-names.test.sh`: plays an app that
+  already has its own `Animation`, `AnimatedSprite` and `PaintFrame` types,
+  and renames the library's with the `ANIMATION_*_FULLY_QUALIFIED` settings.
+  It's its own crate, because a name clash fails its whole compile (E0428).
+
+It runs both with `RUSTFLAGS="-D warnings"`, so a warning in the generated
+code fails the run. If the unit tests pass, it then runs the mutation tests
+(`mutate.sh`). A failed version check or type-name test doesn't stop the
+other tests from running, but the run exits 0 only if everything passes.
 
 To run one test, run `run.sh` once to generate `src/lib.rs`, then call cargo
 from this folder with a test name filter. This skips the mutation tests:
 
 ```bash
 cd lib/src/test/rust/com/koreyhinton/animation
-cargo test swap
+cargo test --lib swap
+cargo test --test type_names
 ```
 
 ## Mutation tests
@@ -73,12 +80,13 @@ reads the version from there, so a bump doesn't break it.
 | `run.sh` | generates the tests and runs them, then `mutate.sh` |
 | `mutate.sh` | runs the tests against mutated copies of the snippet |
 | `unit/animate-sprite.test.sh` | prints the tests as one Rust file, with `models.sh` and the snippet inlined |
+| `unit/type-names.test.sh` | prints the type-name test, an app whose own types share the library's default names |
 | `unit/models-version.check.sh` | checks `models.sh` against `version.sh` (bash, prints no Rust) |
 | `Cargo.toml` | the test crate |
-| `src/`, `target/`, `Cargo.lock` | generated, gitignored |
+| `src/`, `tests/`, `target/`, `Cargo.lock` | generated, gitignored |
 
-Don't edit `src/lib.rs`: it's overwritten on every run. Edit
-`unit/animate-sprite.test.sh` instead.
+Don't edit `src/lib.rs` or `tests/type_names.rs`: they're overwritten on
+every run. Edit the `unit/*.test.sh` that prints them instead.
 
 ## Adding a test
 
