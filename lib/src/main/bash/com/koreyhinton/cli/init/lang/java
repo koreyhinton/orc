@@ -1,0 +1,17 @@
+# Java. orc init reads these settings (sourced; plain assignments only).
+# A public class must be in a file of its name, so the file is Main.java.
+ORC_LANG_NAME="Java"
+ORC_LANG_FILE="Main.java"
+# no formatter ships with the JDK; pipe through one in build.sh if you like
+ORC_LANG_FORMAT=""
+ORC_LANG_IGNORE=("/build" "/target" "*.class")
+# the language's own project file(s), looked for in and above the output's
+# folder; with none, orc init warns that the tool below makes them (it never
+# runs the tool itself). Glob patterns are allowed.
+ORC_LANG_PROJECT=("pom.xml" "build.gradle" "build.gradle.kts")
+ORC_LANG_PROJECT_TOOL="a build tool: gradle init, Maven, or Spring Initializr"
+ORC_LANG_SKELETON='public class Main {
+    public static void main(String[] args) {
+        // snippets go here
+    }
+}'

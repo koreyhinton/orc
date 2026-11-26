@@ -1,0 +1,22 @@
+# Rust. orc init reads these settings (sourced; plain assignments only).
+ORC_LANG_NAME="Rust"
+# the generated file's name when orc init creates one
+ORC_LANG_FILE="main.rs"
+# tidies the output in build.sh; @RUST_EDITION@ is read from Cargo.toml (default 2024)
+ORC_LANG_FORMAT="rustfmt --edition @RUST_EDITION@"
+# .gitignore lines the language needs
+ORC_LANG_IGNORE=("/target")
+# the language's own project file(s), looked for in and above the output's
+# folder; with none, orc init warns that the tool below makes them (it never
+# runs the tool itself). Glob patterns are allowed.
+ORC_LANG_PROJECT=("Cargo.toml")
+ORC_LANG_PROJECT_TOOL="cargo init"
+# the entry file the project tool writes (cargo init's), so orc init can tell
+# it hasn't been changed yet and offer a framework's skeleton instead
+ORC_LANG_DEFAULT='fn main() {
+    println!("Hello, world!");
+}'
+# the starting program, printed inside main.sh's heredoc (no $ or backticks)
+ORC_LANG_SKELETON='fn main() {
+    // snippets go here
+}'

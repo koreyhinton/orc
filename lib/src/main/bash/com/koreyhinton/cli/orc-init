@@ -1,0 +1,710 @@
+#!/bin/bash
+
+# orc init: set up orc in the current folder, around the layout that's there.
+#
+#   orc init [--yes] [--dry-run] [--ext <ext>] [--entry <file>]...
+#            [--license agpl|keep]
+#
+# It finds the pipelines to set up, one per main.sh:
+#   1. Every main.sh not yet in build.sh. Its output is the main.<ext> (or
+#      Main.<ext>) next to it; with none there, it asks for the extension
+#      (--ext).
+#   2. With no main.sh at all, the entry file a language's own tooling made
+#      (cargo's src/main.rs, main.go, a Spring *Application.java, Program.cs,
+#      ...), choosing with --entry if there are several. It asks before
+#      letting build.sh own (regenerate) the file. A main.sh goes next to it,
+#      seeded with the file's code, so the first build reproduces it.
+#   3. With neither, it offers to create src/main.sh, asks for the extension
+#      (--ext) and starts the program from that language's skeleton.
+# A known language (cli/init/lang/<ext>) adds its formatter (rustfmt, gofmt)
+# and .gitignore lines. A framework file (cli/init/lang/<ext>+<name>, such as
+# rs+macroquad) supplies the skeleton when the project depends on it, and is
+# offered in place of a tool's untouched default (cargo's hello world). orc init never runs a language's own tool (cargo init,
+# go mod init, ...): if a pipeline's project file (Cargo.toml, go.mod, ...)
+# is missing, it warns before the plan is accepted, so you can stop, run the
+# tool, and run orc init again.
+#
+# It also warns, without stopping, when ORC isn't set (saying which orc
+# build.sh will find instead) and when orc isn't on PATH.
+#
+# Then it plans the rest: LICENSE (AGPL-3.0; another license is replaced only
+# if you agree, or with --license agpl), .gitignore (missing lines appended),
+# ORC.md (orc's rules), CLAUDE.md and AGENTS.md (a pointer to ORC.md added),
+# orc-env.sh, build.sh (the pipelines) and .github/workflows/orc.yml.
+#
+# Nothing is written until the plan is shown and accepted (--yes accepts it,
+# --dry-run only shows it), so stopping at any question, Ctrl-C included,
+# leaves the folder as it was. It never overwrites a build.sh or orc-env.sh
+# orc didn't write, and never changes a pipeline build.sh already lists, so
+# running it again only adds what's new.
+
+orc_cli_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+. "${orc_cli_dir}/common.bash" || exit 1
+orc_templates="${orc_cli_dir}/init"
+orc_langs="${orc_templates}/lang"
+orc_root=$(realpath "${orc_cli_dir}/../../../../../../..")
+# the core version this orc is: orc-env.sh and the workflow are pinned to it
+orc_core_v=$(sed -n 's/^ORC_CORE_V="\(.*\)"$/\1/p' "${orc_cli_dir}/../version.sh")
+[[ -n "${orc_core_v}" ]] || { echo "orc init: no ORC_CORE_V in ${orc_cli_dir}/../version.sh" >&2; exit 1; }
+
+orc_usage="usage: orc init [--yes] [--dry-run] [--ext <ext>] [--entry <file>]... [--license agpl|keep]"
+
+# ---- arguments ----
+
+orc_yes=0
+orc_dry_run=0
+orc_ext=""
+orc_entries=()
+orc_license_choice=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --yes|-y) orc_yes=1; shift ;;
+        --dry-run) orc_dry_run=1; shift ;;
+        --ext) orc_ext=$2; shift 2 ;;
+        --ext=*) orc_ext=${1#--ext=}; shift ;;
+        --entry) orc_entries+=("$2"); shift 2 ;;
+        --entry=*) orc_entries+=("${1#--entry=}"); shift ;;
+        --license) orc_license_choice=$2; shift 2 ;;
+        --license=*) orc_license_choice=${1#--license=}; shift ;;
+        -h|--help) echo "${orc_usage}"; exit 0 ;;
+        *) echo "orc init: unknown argument: $1" >&2; echo "${orc_usage}" >&2; exit 2 ;;
+    esac
+done
+orc_ext=${orc_ext#.}
+if [[ -n "${orc_ext}" && ! "${orc_ext}" =~ ^[A-Za-z0-9]+$ ]]; then
+    echo "orc init: --ext must be letters and digits, such as rs: ${orc_ext}" >&2
+    exit 2
+fi
+if [[ -n "${orc_license_choice}" && "${orc_license_choice}" != "agpl" && "${orc_license_choice}" != "keep" ]]; then
+    echo "orc init: --license must be agpl or keep" >&2
+    exit 2
+fi
+
+# questions need a person at a terminal (ORC_INIT_INTERACTIVE=1 lets tests
+# answer them on stdin)
+orc_interactive=0
+if [[ -t 0 || -n "${ORC_INIT_INTERACTIVE}" ]]; then
+    orc_interactive=1
+fi
+
+# Until the plan is applied, everything goes to a temp folder: stopping
+# leaves the app's folder untouched.
+orc_stage=$(mktemp -d)
+trap 'rm -rf "${orc_stage}"' EXIT
+trap 'echo >&2; echo "orc init: stopped; nothing was written" >&2; exit 130' INT
+
+orc_warn() {
+    echo "orc init: warning: $*" >&2
+}
+
+orc_stop() {
+    echo "orc init: $*" >&2
+    echo "orc init: nothing was written" >&2
+    exit 1
+}
+
+# orc_ask <question>: ask on stderr, read the answer into orc_answer. With no
+# terminal, stop: the caller names the flag that answers it.
+orc_ask() {
+    printf '%s ' "$1" >&2
+    if ! IFS= read -r orc_answer; then
+        echo >&2
+        orc_stop "stopped at a question"
+    fi
+}
+
+# orc_need <flag> <question>: stop if the question can't be asked
+orc_need() {
+    if [[ ${orc_interactive} -eq 0 ]]; then
+        orc_stop "$2 (run it in a terminal, or pass $1)"
+    fi
+}
+
+# orc_lang <ext>: load a language's settings, if orc knows it (returns 1 if not)
+orc_lang() {
+    ORC_LANG_NAME=""
+    ORC_LANG_FILE="main.$1"
+    ORC_LANG_FORMAT=""
+    ORC_LANG_IGNORE=()
+    ORC_LANG_SKELETON=""
+    ORC_LANG_PROJECT=()
+    ORC_LANG_PROJECT_TOOL=""
+    ORC_LANG_DEFAULT=""
+    ORC_FRAMEWORK_NAME=""
+    ORC_FRAMEWORK_DEP=""
+    [[ "$1" =~ ^[A-Za-z0-9]+$ && -f "${orc_langs}/$1" ]] || return 1
+    . "${orc_langs}/$1"
+}
+
+# orc_ask_ext <for what>: the extension from --ext, or asked
+orc_ask_ext() {
+    if [[ -n "${orc_ext}" ]]; then
+        orc_answer=${orc_ext}
+        return
+    fi
+    orc_need --ext "can't tell what $1 generates"
+    orc_answer=""
+    while [[ ! "${orc_answer}" =~ ^[A-Za-z0-9]+$ ]]; do
+        orc_ask "File extension of what $1 generates (e.g. rs, go, java, kt, ts, c):"
+        orc_answer=${orc_answer#.}
+    done
+}
+
+# orc_format <ext> <output>: the formatter command for a pipeline
+orc_format() {
+    orc_lang "$1"
+    local format=${ORC_LANG_FORMAT}
+    if [[ "${format}" == *@RUST_EDITION@* ]]; then
+        # the edition from the nearest Cargo.toml above the output
+        local dir edition=""
+        dir=$(dirname "$2")
+        while [[ -z "${edition}" ]]; do
+            if [[ -f "${dir}/Cargo.toml" ]]; then
+                edition=$(grep -m1 -oE '^edition *= *"[0-9]+"' "${dir}/Cargo.toml" | grep -oE '[0-9]+')
+                edition=${edition:-2015}
+            fi
+            [[ "${dir}" == "." || "${dir}" == "/" ]] && break
+            dir=$(dirname "${dir}")
+        done
+        format=${format//@RUST_EDITION@/${edition:-2024}}
+    fi
+    echo "${format}"
+}
+
+# orc_heredoc_body: indent code for a main.sh heredoc, escaping what bash
+# would expand (\, $ and backticks), so the heredoc prints it back unchanged
+orc_heredoc_body() {
+    sed -e 's/\\/\\\\/g' -e 's/\$/\\$/g' -e 's/`/\\`/g' -e 's/^\(.\)/    \1/'
+}
+
+# orc_nearest <name> <dir>: the nearest file of that name in <dir> or above
+# (up to the app's root)
+orc_nearest() {
+    local dir=$2
+    while true; do
+        if [[ -f "${dir}/$1" ]]; then
+            echo "${dir}/$1"
+            return 0
+        fi
+        [[ "${dir}" == "." || "${dir}" == "/" ]] && return 1
+        dir=$(dirname "${dir}")
+    done
+}
+
+# orc_has_dep <ext> <output> <dependency>: whether the output's project
+# depends on it (Cargo.toml for Rust, go.mod for Go)
+orc_has_dep() {
+    local project
+    case "$1" in
+        rs)
+            project=$(orc_nearest Cargo.toml "$(dirname "$2")") || return 1
+            # [dependencies], [target.<cfg>.dependencies] or [dependencies.<name>]
+            awk -v dep="$3" '
+                /^\[/ {
+                    deps = ($0 ~ /^\[(target\..*\.)?dependencies\]$/)
+                    if ($0 == "[dependencies." dep "]") found = 1
+                }
+                deps && $0 ~ ("^[[:space:]]*" dep "[[:space:]]*=") { found = 1 }
+                END { exit !found }
+            ' "${project}"
+            ;;
+        go)
+            project=$(orc_nearest go.mod "$(dirname "$2")") || return 1
+            grep -qE "^[[:space:]]*(require[[:space:]]+)?$3[[:space:]]" "${project}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# orc_framework <ext> <output>: the framework file (lang/<ext>+<name>) whose
+# dependency the output's project has, if any
+orc_framework() {
+    local file dep
+    for file in "${orc_langs}/$1+"*; do
+        [[ -f "${file}" ]] || continue
+        dep=$(ORC_FRAMEWORK_DEP=""; . "${file}"; echo "${ORC_FRAMEWORK_DEP}")
+        if [[ -n "${dep}" ]] && orc_has_dep "$1" "$2" "${dep}"; then
+            echo "${file}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# orc_confirm <question>: a [Y/n] question; yes with --yes or --dry-run
+orc_confirm() {
+    [[ ${orc_yes} -eq 1 || ${orc_dry_run} -eq 1 ]] && return 0
+    orc_need --yes "needs an answer: $1"
+    orc_ask "$1 [Y/n]"
+    [[ ! "${orc_answer}" =~ ^[Nn] ]]
+}
+
+# orc_clean <path>: a path without a leading ./
+orc_clean() {
+    local path=$1
+    while [[ "${path}" == ./* ]]; do path=${path#./}; done
+    echo "${path}"
+}
+
+# ---- the plan: what will be written, staged in orc_stage ----
+
+orc_actions=()     # "verb|path|note" for the summary
+orc_writes=()      # "path|staged file|mode": files to create or replace
+orc_appends=()     # "path|staged file": text to append
+
+orc_stage_file() {
+    mktemp "${orc_stage}/XXXXXX"
+}
+
+# orc_plan_write <verb> <path> <staged file> <executable: yes|no> <note>
+orc_plan_write() {
+    orc_writes+=("$2|$3|$4")
+    orc_actions+=("$1|$2|$5")
+}
+
+# orc_plan_append <verb> <path> <staged file> <note>
+orc_plan_append() {
+    orc_appends+=("$2|$3")
+    orc_actions+=("$1|$2|$4")
+}
+
+orc_note() {
+    orc_actions+=("$1|$2|$3")
+}
+
+# ---- how build.sh will find orc (warnings only: you may know it's fine) ----
+
+orc_on_path=0
+command -v orc > /dev/null 2>&1 && orc_on_path=1
+if [[ -z "${ORC}" ]]; then
+    orc_sibling=$(realpath -m "$(pwd)/../orc")
+    if [[ ${orc_on_path} -eq 1 ]]; then
+        orc_warn "ORC isn't set; build.sh will use the orc on PATH ($(orc root 2> /dev/null))"
+    elif [[ -d "${orc_sibling}/lib/src/main/bash/com/koreyhinton" ]]; then
+        orc_warn "ORC isn't set and orc isn't on PATH; build.sh will use the orc next to this folder (${orc_sibling})"
+    else
+        orc_warn "ORC isn't set, orc isn't on PATH, and there's no ${orc_sibling}: build.sh won't find orc until one of those is true"
+    fi
+fi
+if [[ ${orc_on_path} -eq 0 ]]; then
+    orc_warn "orc isn't on PATH; add ${orc_cli_dir} to PATH to run orc init and orc check by name"
+fi
+
+# ---- what orc already owns ----
+
+orc_listed=()      # the main.sh files build.sh already lists
+orc_build_exists=0
+if [[ -e build.sh ]]; then
+    if ! sed -n '2p' build.sh | grep -qx '# orc init: build.sh'; then
+        orc_stop "build.sh is already here, and orc didn't write it. Bring it in line by hand (or with an LLM's help), using ${orc_templates}/build.sh"
+    fi
+    orc_build_exists=1
+    mapfile -t orc_listed < <(
+        sed -n '/^orc_pipelines=($/,/^)$/p' build.sh | grep -oE '^[[:space:]]*"[^|"]+' \
+            | sed -E 's/^[[:space:]]*"//'
+    )
+fi
+if [[ -e orc-env.sh ]] && ! sed -n '2p' orc-env.sh | grep -qx '# orc init: orc-env.sh'; then
+    orc_stop "orc-env.sh is already here, and orc didn't write it. Bring it in line by hand, using ${orc_templates}/orc-env.sh"
+fi
+
+# ---- the pipelines ----
+
+orc_new=()         # "main.sh|output|ext|seed from (or empty)|fill main.sh: yes|no"
+
+mapfile -t orc_files < <(orc_list_files . | while IFS= read -r path; do orc_clean "${path}"; done)
+mapfile -t orc_mains < <(printf '%s\n' "${orc_files[@]}" | grep -E '(^|/)main\.sh$')
+
+# 1. main.sh files build.sh doesn't list yet
+for orc_main in "${orc_mains[@]}"; do
+    [[ -z "${orc_main}" ]] && continue
+    if printf '%s\n' "${orc_listed[@]}" | grep -qxF "${orc_main}"; then
+        continue
+    fi
+    orc_dir=$(dirname "${orc_main}")
+    # its output: a main.<ext> or Main.<ext> next to it
+    mapfile -t orc_siblings < <(
+        find "${orc_dir}" -maxdepth 1 -type f -name '[Mm]ain.*' ! -name '*.sh' ! -name '*~' ! -name '*.tmp' \
+            | while IFS= read -r path; do orc_clean "${path}"; done | sort
+    )
+    if [[ ${#orc_siblings[@]} -gt 1 ]]; then
+        orc_stop "${orc_main} has several main files next to it (${orc_siblings[*]}); keep the one it generates"
+    fi
+    orc_fill=no
+    [[ ! -s "${orc_main}" ]] && orc_fill=yes
+    if [[ ${#orc_siblings[@]} -eq 1 ]]; then
+        orc_out=${orc_siblings[0]}
+        orc_e=${orc_out##*.}
+        orc_seed=""
+        [[ ${orc_fill} == yes ]] && orc_seed=${orc_out}
+    else
+        orc_ask_ext "${orc_main}"
+        orc_e=${orc_answer}
+        orc_lang "${orc_e}"
+        orc_out=$(orc_clean "${orc_dir}/${ORC_LANG_FILE}")
+        orc_seed=""
+    fi
+    orc_new+=("${orc_main}|${orc_out}|${orc_e}|${orc_seed}|${orc_fill}|no")
+done
+
+# 2. no main.sh at all: the entry file a language's tooling made
+if [[ ${#orc_mains[@]} -eq 0 || -z "${orc_mains[0]}" ]]; then
+    if [[ ${#orc_entries[@]} -gt 0 ]]; then
+        orc_candidates=()
+        for orc_entry in "${orc_entries[@]}"; do
+            [[ -f "${orc_entry}" ]] || orc_stop "--entry ${orc_entry}: no such file"
+            orc_candidates+=("$(orc_clean "${orc_entry}")")
+        done
+        orc_chosen=("${orc_candidates[@]}")
+        orc_picked=yes
+    else
+        orc_picked=no
+        mapfile -t orc_candidates < <(
+            printf '%s\n' "${orc_files[@]}" \
+                | grep -vE '(^|/)(test|tests|androidTest|testFixtures)/' \
+                | grep -E '(^|/)src/main\.rs$|(^|/)main\.go$|(^|/)src/main/java/.*Application\.java$|(^|/)Main\.java$|(^|/)MainActivity\.java$|(^|/)src/main/kotlin/.*Application\.kt$|(^|/)Main\.kt$|(^|/)MainActivity\.kt$|(^|/)Program\.cs$|(^|/)src/(main|index)\.ts$|(^|/)main\.c$|(^|/)main\.cpp$'
+        )
+        orc_chosen=()
+        if [[ ${#orc_candidates[@]} -eq 1 && -n "${orc_candidates[0]}" ]]; then
+            orc_chosen=("${orc_candidates[0]}")
+        elif [[ ${#orc_candidates[@]} -gt 1 ]]; then
+            if [[ ${orc_interactive} -eq 0 ]]; then
+                orc_stop "found several entry files: ${orc_candidates[*]} (choose with --entry <file>, once per file)"
+            fi
+            echo "Found several entry files:" >&2
+            for orc_i in "${!orc_candidates[@]}"; do
+                echo "  $((orc_i + 1)). ${orc_candidates[${orc_i}]}" >&2
+            done
+            orc_ask "Which should orc generate? Numbers separated by commas (e.g. 1,3), or Enter to stop:"
+            [[ -z "${orc_answer}" ]] && orc_stop "no entry file chosen"
+            for orc_pick in ${orc_answer//,/ }; do
+                if [[ ! "${orc_pick}" =~ ^[0-9]+$ || ${orc_pick} -lt 1 || ${orc_pick} -gt ${#orc_candidates[@]} ]]; then
+                    orc_stop "no entry file numbered ${orc_pick}"
+                fi
+                orc_chosen+=("${orc_candidates[$((orc_pick - 1))]}")
+            done
+            orc_picked=yes
+        fi
+    fi
+    for orc_entry in "${orc_chosen[@]}"; do
+        orc_dir=$(dirname "${orc_entry}")
+        orc_main=$(orc_clean "${orc_dir}/main.sh")
+        if printf '%s\n' "${orc_new[@]}" | grep -q "^${orc_main}|"; then
+            orc_stop "two entry files share ${orc_dir}; a folder holds one main.sh"
+        fi
+        orc_new+=("${orc_main}|${orc_entry}|${orc_entry##*.}|${orc_entry}|yes|${orc_picked}")
+    done
+
+    # 3. nothing to go on: offer src/main.sh
+    if [[ ${#orc_new[@]} -eq 0 ]]; then
+        if [[ ${orc_yes} -eq 0 ]]; then
+            orc_need --yes "found no main.sh or entry file (src/main.rs, main.go, ...) to start from"
+            echo "No main.sh or entry file (src/main.rs, main.go, ...) found. A language's own" >&2
+            echo "tool (cargo init, go mod init, gradle init, ...) can make the layout first." >&2
+            orc_ask "Create src/main.sh? [Y/n]"
+            if [[ "${orc_answer}" =~ ^[Nn] ]]; then
+                orc_stop "set up the layout (or a main.sh), then run orc init again"
+            fi
+        fi
+        orc_ask_ext "src/main.sh"
+        orc_lang "${orc_answer}"
+        orc_out="src/${ORC_LANG_FILE}"
+        orc_seed=""
+        [[ -f "${orc_out}" ]] && orc_seed=${orc_out}
+        orc_new+=("src/main.sh|${orc_out}|${orc_answer}|${orc_seed}|yes|no")
+    fi
+fi
+
+# ---- review: owning existing files, and framework skeletons ----
+
+orc_reviewed=()    # "main.sh|output|ext|seed from|fill|framework file"
+for orc_pipeline in "${orc_new[@]}"; do
+    IFS='|' read -r orc_main orc_out orc_e orc_seed orc_fill orc_picked <<< "${orc_pipeline}"
+    orc_fw=""
+    if [[ -n "${orc_seed}" ]]; then
+        # build.sh will regenerate a file that's there now: ask first, unless
+        # it was picked from the list of entry files
+        if [[ "${orc_picked}" != yes ]]; then
+            if [[ ${orc_yes} -eq 0 && ${orc_dry_run} -eq 0 && ${orc_interactive} -eq 1 ]]; then
+                echo "Found ${orc_out}. build.sh will regenerate it from ${orc_main}, seeded with its current" >&2
+                echo "code, so nothing is lost now. From then on, edit ${orc_main}, not ${orc_out}:" >&2
+                echo "direct edits to ${orc_out} are overwritten on every build." >&2
+            fi
+            if ! orc_confirm "Let build.sh own ${orc_out}?"; then
+                echo "orc init: leaving ${orc_out} alone" >&2
+                continue
+            fi
+        fi
+        # still the project tool's default, in a project with a framework:
+        # offer the framework's skeleton
+        orc_lang "${orc_e}"
+        if [[ -n "${ORC_LANG_DEFAULT}" && "$(cat "${orc_seed}")" == "${ORC_LANG_DEFAULT}" ]] \
+            && orc_fw=$(orc_framework "${orc_e}" "${orc_out}"); then
+            orc_fw_name=$(. "${orc_fw}"; echo "${ORC_FRAMEWORK_NAME}")
+            if orc_confirm "${orc_out} is still the project tool's starting code, and the project uses ${orc_fw_name}. Start ${orc_main} from a ${orc_fw_name} skeleton instead?"; then
+                orc_seed=""
+            else
+                orc_fw=""
+            fi
+        fi
+    elif [[ ${orc_fill} == yes ]]; then
+        orc_fw=$(orc_framework "${orc_e}" "${orc_out}")
+    fi
+    orc_reviewed+=("${orc_main}|${orc_out}|${orc_e}|${orc_seed}|${orc_fill}|${orc_fw}")
+done
+if [[ ${#orc_new[@]} -gt 0 && ${#orc_reviewed[@]} -eq 0 ]]; then
+    orc_stop "no pipeline left to set up"
+fi
+orc_new=("${orc_reviewed[@]}")
+
+# each new pipeline's main.sh and build.sh line
+orc_lines=()
+orc_in_git=0
+git rev-parse --is-inside-work-tree > /dev/null 2>&1 && orc_in_git=1
+for orc_pipeline in "${orc_new[@]}"; do
+    IFS='|' read -r orc_main orc_out orc_e orc_seed orc_fill orc_fw <<< "${orc_pipeline}"
+    orc_format_cmd=$(orc_format "${orc_e}" "${orc_out}")
+    orc_lines+=("    \"${orc_main}|${orc_out}|${orc_format_cmd}\"")
+    orc_lang "${orc_e}"
+    orc_known=$?
+    orc_name=${ORC_LANG_NAME:-.${orc_e}}
+    # the language's own project file, in or above the output's folder
+    if [[ ${#ORC_LANG_PROJECT[@]} -gt 0 ]]; then
+        orc_has_project=0
+        orc_dir=$(dirname "${orc_out}")
+        while [[ ${orc_has_project} -eq 0 ]]; do
+            for orc_pattern in "${ORC_LANG_PROJECT[@]}"; do
+                compgen -G "${orc_dir}/${orc_pattern}" > /dev/null && orc_has_project=1
+            done
+            [[ "${orc_dir}" == "." || "${orc_dir}" == "/" ]] && break
+            orc_dir=$(dirname "${orc_dir}")
+        done
+        if [[ ${orc_has_project} -eq 0 ]]; then
+            orc_warn "no ${ORC_LANG_PROJECT[*]} for ${orc_out}, and orc init doesn't make one."
+            echo "    To start from ${orc_name}'s own layout, stop now (Ctrl-C), run ${ORC_LANG_PROJECT_TOOL}," >&2
+            echo "    then run orc init again; it adopts what the tool made. Or carry on and run it later." >&2
+        fi
+    fi
+    if [[ ${orc_fill} == yes ]]; then
+        orc_body_file=$(orc_stage_file)
+        if [[ -n "${orc_seed}" ]]; then
+            orc_heredoc_body < "${orc_seed}" > "${orc_body_file}"
+            orc_seeded=$'\n#\n'"# orc init seeded the heredoc below from the original $(basename "${orc_seed}"), so the"$'\n'"# first build reproduces it. Move its parts into snippets as you go."
+            orc_how="seeded from ${orc_seed}"
+        else
+            orc_how="${orc_name} skeleton"
+            if [[ -n "${orc_fw}" ]]; then
+                # the framework file overrides the language's skeleton
+                . "${orc_fw}"
+                orc_how="${orc_name} ${ORC_FRAMEWORK_NAME} skeleton"
+            fi
+            orc_skeleton=${ORC_LANG_SKELETON//@ORC_APP@/$(basename "$(pwd)" | tr -d '"\\')}
+            printf '%s\n' "${orc_skeleton}" | orc_heredoc_body > "${orc_body_file}"
+            orc_seeded=""
+            [[ ${orc_known} -ne 0 || -z "${ORC_LANG_SKELETON}" ]] && orc_how="empty: orc has no ${orc_name} skeleton"
+        fi
+        orc_text=$(cat "${orc_templates}/main.sh"; echo x)
+        orc_text=${orc_text%x}
+        orc_body=$(cat "${orc_body_file}")
+        orc_text=${orc_text//@ORC_LANG@/${orc_name}}
+        orc_text=${orc_text//@ORC_OUT_NAME@/$(basename "${orc_out}")}
+        orc_text=${orc_text//@ORC_SEEDED@/${orc_seeded}}
+        orc_text=${orc_text//@ORC_BODY@/${orc_body}}
+        orc_staged=$(orc_stage_file)
+        printf '%s' "${orc_text}" > "${orc_staged}"
+        orc_verb=create
+        [[ -e "${orc_main}" ]] && orc_verb=fill
+        orc_plan_write "${orc_verb}" "${orc_main}" "${orc_staged}" yes "${orc_how}; generates ${orc_out}"
+    fi
+    orc_note pipeline "${orc_main} -> ${orc_out}" "${orc_format_cmd:-no formatter}"
+    if [[ -e "${orc_out}" ]]; then
+        orc_note overwrite "${orc_out}" "on the next ./build.sh, by what main.sh prints"
+    fi
+    if [[ ${orc_in_git} -eq 1 && -e "${orc_out}" ]] && git ls-files --error-unmatch -- "${orc_out}" > /dev/null 2>&1; then
+        orc_note tracked "${orc_out}" "git tracks it; run git rm --cached ${orc_out} to leave it to build.sh"
+    fi
+done
+
+# ---- the files around the pipelines ----
+
+orc_app=$(basename "$(pwd)")
+
+# LICENSE: AGPL-3.0, orc's own; another license only goes if you agree
+if [[ ! -e LICENSE ]]; then
+    orc_plan_write create LICENSE "${orc_root}/LICENSE" no "AGPL-3.0"
+elif grep -q 'GNU AFFERO GENERAL PUBLIC LICENSE' LICENSE && grep -q 'Version 3' LICENSE; then
+    :
+else
+    orc_replace=${orc_license_choice}
+    if [[ -z "${orc_replace}" && ${orc_interactive} -eq 1 ]]; then
+        echo "LICENSE isn't AGPL-3.0 (orc's license). Only replace it if you hold the rights to" >&2
+        echo "everything in this repo: outside contributors would have to agree." >&2
+        orc_ask "Replace LICENSE with AGPL-3.0? [y/N]"
+        orc_replace=keep
+        [[ "${orc_answer}" =~ ^[Yy] ]] && orc_replace=agpl
+    fi
+    if [[ "${orc_replace}" == agpl ]]; then
+        orc_plan_write replace LICENSE "${orc_root}/LICENSE" no "with AGPL-3.0"
+    else
+        orc_note keep LICENSE "not AGPL-3.0; --license agpl replaces it"
+    fi
+fi
+
+# .gitignore: append the lines it's missing
+orc_ignores=()
+while IFS= read -r orc_line; do
+    [[ -n "${orc_line}" && "${orc_line}" != \#\ * ]] && orc_ignores+=("${orc_line}")
+done < "${orc_templates}/gitignore"
+for orc_pipeline in "${orc_new[@]}"; do
+    IFS='|' read -r orc_main orc_out orc_e _ _ _ <<< "${orc_pipeline}"
+    orc_ignores+=("/${orc_out}" "/${orc_out}.tmp")
+    orc_lang "${orc_e}"
+    orc_ignores+=("${ORC_LANG_IGNORE[@]}")
+done
+orc_missing=()
+for orc_line in "${orc_ignores[@]}"; do
+    if [[ -e .gitignore ]] && grep -qxF -- "${orc_line}" .gitignore; then
+        continue
+    fi
+    printf '%s\n' "${orc_missing[@]}" | grep -qxF -- "${orc_line}" || orc_missing+=("${orc_line}")
+done
+if [[ ${#orc_missing[@]} -gt 0 ]]; then
+    orc_staged=$(orc_stage_file)
+    {
+        if [[ -s .gitignore ]]; then
+            [[ -n "$(tail -c1 .gitignore)" ]] && echo
+            echo
+        fi
+        echo "# orc: emacs backups and autosaves, and generated outputs"
+        printf '%s\n' "${orc_missing[@]}"
+    } > "${orc_staged}"
+    if [[ -e .gitignore ]]; then
+        orc_plan_append append .gitignore "${orc_staged}" "${#orc_missing[@]} lines"
+    else
+        orc_plan_write create .gitignore "${orc_staged}" no "${#orc_missing[@]} lines"
+    fi
+fi
+
+# ORC.md: orc's own, kept current
+if [[ ! -e ORC.md ]]; then
+    orc_plan_write create ORC.md "${orc_templates}/ORC.md" no "orc's rules"
+elif ! cmp -s ORC.md "${orc_templates}/ORC.md"; then
+    orc_plan_write update ORC.md "${orc_templates}/ORC.md" no "to this orc's rules"
+fi
+
+# CLAUDE.md: import ORC.md (Claude Code loads it with CLAUDE.md)
+orc_claude_section="## orc
+
+This app's code is generated with orc. Read [ORC.md](ORC.md) and follow its rules before editing.
+@ORC.md"
+if [[ ! -e CLAUDE.md ]]; then
+    orc_staged=$(orc_stage_file)
+    printf '# %s\n\n%s\n' "${orc_app}" "${orc_claude_section}" > "${orc_staged}"
+    orc_plan_write create CLAUDE.md "${orc_staged}" no "imports ORC.md"
+elif ! grep -qx '@ORC\.md' CLAUDE.md; then
+    orc_staged=$(orc_stage_file)
+    {
+        [[ -s CLAUDE.md && -n "$(tail -c1 CLAUDE.md)" ]] && echo
+        echo
+        echo "${orc_claude_section}"
+    } > "${orc_staged}"
+    orc_plan_append add CLAUDE.md "${orc_staged}" "an orc section importing ORC.md"
+fi
+
+# AGENTS.md: other agents follow plain links to CLAUDE.md and ORC.md
+if [[ ! -e AGENTS.md ]]; then
+    orc_staged=$(orc_stage_file)
+    printf '# %s\n\nThis repo'"'"'s instructions are in [CLAUDE.md](CLAUDE.md). Its code is generated with orc: read [ORC.md](ORC.md) and follow its rules before editing.\n' \
+        "${orc_app}" > "${orc_staged}"
+    orc_plan_write create AGENTS.md "${orc_staged}" no "links CLAUDE.md and ORC.md"
+elif ! grep -q 'ORC\.md' AGENTS.md; then
+    orc_staged=$(orc_stage_file)
+    {
+        [[ -s AGENTS.md && -n "$(tail -c1 AGENTS.md)" ]] && echo
+        echo
+        echo "## orc"
+        echo
+        echo "This app's code is generated with orc: read [ORC.md](ORC.md) and follow its rules before editing."
+    } > "${orc_staged}"
+    orc_plan_append add AGENTS.md "${orc_staged}" "an orc section linking ORC.md"
+fi
+
+# orc-env.sh
+if [[ ! -e orc-env.sh ]]; then
+    orc_staged=$(orc_stage_file)
+    sed "s/@ORC_CORE_V@/${orc_core_v}/g" "${orc_templates}/orc-env.sh" > "${orc_staged}"
+    orc_plan_write create orc-env.sh "${orc_staged}" yes "finds orc, core v${orc_core_v}"
+fi
+
+# build.sh: the pipelines
+if [[ ${#orc_lines[@]} -gt 0 ]]; then
+    orc_staged=$(orc_stage_file)
+    if [[ ${orc_build_exists} -eq 0 ]]; then
+        orc_text=$(cat "${orc_templates}/build.sh"; echo x)
+        orc_text=${orc_text%x}
+        orc_text=${orc_text//@ORC_PIPELINES@/$(printf '%s\n' "${orc_lines[@]}")}
+        printf '%s' "${orc_text}" > "${orc_staged}"
+        orc_plan_write create build.sh "${orc_staged}" yes "${#orc_lines[@]} pipeline(s)"
+    else
+        # add the new lines at the end of the orc_pipelines list
+        orc_insert=$(orc_stage_file)
+        printf '%s\n' "${orc_lines[@]}" > "${orc_insert}"
+        awk -v insert="${orc_insert}" '
+            /^orc_pipelines=\($/ { inside = 1 }
+            inside && /^\)$/ { while ((getline line < insert) > 0) print line; inside = 0 }
+            { print }
+        ' build.sh > "${orc_staged}"
+        orc_plan_write update build.sh "${orc_staged}" yes "adds ${#orc_lines[@]} pipeline(s)"
+    fi
+fi
+
+# the workflow
+if [[ ! -e .github/workflows/orc.yml ]]; then
+    orc_staged=$(orc_stage_file)
+    sed "s/@ORC_CORE_V@/${orc_core_v}/g" "${orc_templates}/orc.yml" > "${orc_staged}"
+    orc_plan_write create .github/workflows/orc.yml "${orc_staged}" no "CI runs ./build.sh on orc core/v${orc_core_v}"
+fi
+
+# ---- show the plan, then apply it ----
+
+orc_changes=$(( ${#orc_writes[@]} + ${#orc_appends[@]} ))
+if [[ ${orc_changes} -eq 0 ]]; then
+    echo "orc init: nothing to do (every main.sh is in build.sh)"
+    exit 0
+fi
+
+echo "orc init will:"
+for orc_action in "${orc_actions[@]}"; do
+    IFS='|' read -r orc_verb orc_path orc_why <<< "${orc_action}"
+    printf '  %-9s %s  (%s)\n' "${orc_verb}" "${orc_path}" "${orc_why}"
+done
+
+if [[ ${orc_dry_run} -eq 1 ]]; then
+    echo "orc init: dry run; nothing was written"
+    exit 0
+fi
+if [[ ${orc_yes} -eq 0 ]]; then
+    orc_need --yes "needs the plan accepted"
+    orc_ask "Proceed? [y/N]"
+    [[ "${orc_answer}" =~ ^[Yy] ]] || orc_stop "plan not accepted"
+fi
+
+# from here, finish: a half-written setup is worse than either state
+trap '' INT
+for orc_write in "${orc_writes[@]}"; do
+    IFS='|' read -r orc_path orc_from orc_mode <<< "${orc_write}"
+    mkdir -p "$(dirname "${orc_path}")" && cp "${orc_from}" "${orc_path}" || exit 1
+    [[ "${orc_mode}" == yes ]] && chmod +x "${orc_path}"
+done
+for orc_append in "${orc_appends[@]}"; do
+    IFS='|' read -r orc_path orc_from <<< "${orc_append}"
+    cat "${orc_from}" >> "${orc_path}" || exit 1
+done
+
+cat << DONE
+orc init: done. Next:
+  - ./build.sh   (checks the architecture, then generates each pipeline's output)
+  - move code out of a main.sh heredoc into snippets as you go (see ORC.md)
+DONE

@@ -1,0 +1,15 @@
+# TypeScript. orc init reads these settings (sourced; plain assignments only).
+ORC_LANG_NAME="TypeScript"
+ORC_LANG_FILE="main.ts"
+ORC_LANG_FORMAT=""
+ORC_LANG_IGNORE=("node_modules/" "/dist")
+# the language's own project file(s), looked for in and above the output's
+# folder; with none, orc init warns that the tool below makes them (it never
+# runs the tool itself). Glob patterns are allowed.
+ORC_LANG_PROJECT=("package.json" "tsconfig.json")
+ORC_LANG_PROJECT_TOOL="npm init and npx tsc --init"
+ORC_LANG_SKELETON='function main(): void {
+    // snippets go here
+}
+
+main();'

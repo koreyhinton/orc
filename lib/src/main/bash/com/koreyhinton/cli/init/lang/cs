@@ -1,0 +1,18 @@
+# C#. orc init reads these settings (sourced; plain assignments only).
+# (A method can't share its class's name in C#, so the class is Program.)
+ORC_LANG_NAME="C#"
+ORC_LANG_FILE="Main.cs"
+ORC_LANG_FORMAT=""
+ORC_LANG_IGNORE=("bin/" "obj/")
+# the language's own project file(s), looked for in and above the output's
+# folder; with none, orc init warns that the tool below makes them (it never
+# runs the tool itself). Glob patterns are allowed.
+ORC_LANG_PROJECT=("*.csproj")
+ORC_LANG_PROJECT_TOOL="dotnet new console"
+ORC_LANG_SKELETON='public static class Program
+{
+    public static void Main(string[] args)
+    {
+        // snippets go here
+    }
+}'

@@ -1,0 +1,13 @@
+# Kotlin. orc init reads these settings (sourced; plain assignments only).
+ORC_LANG_NAME="Kotlin"
+ORC_LANG_FILE="Main.kt"
+ORC_LANG_FORMAT=""
+ORC_LANG_IGNORE=("/build" "*.jar")
+# the language's own project file(s), looked for in and above the output's
+# folder; with none, orc init warns that the tool below makes them (it never
+# runs the tool itself). Glob patterns are allowed.
+ORC_LANG_PROJECT=("build.gradle.kts" "build.gradle" "pom.xml")
+ORC_LANG_PROJECT_TOOL="gradle init (or Maven)"
+ORC_LANG_SKELETON='fun main() {
+    // snippets go here
+}'
