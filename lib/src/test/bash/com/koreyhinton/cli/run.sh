@@ -921,6 +921,7 @@ test_check_needs_a_main_sh() {
 test_env_prefers_orc_set_by_the_caller() {
     orc init --yes --ext c > /dev/null 2>&1 || fail "orc init failed"
     mkdir -p ../fake-orc/lib/src/main/bash/com/koreyhinton
+    cp "${RN_RT}/lib/src/main/bash/com/koreyhinton/version.sh" ../fake-orc/lib/src/main/bash/com/koreyhinton/
     [[ "$(ORC="$(cd ../fake-orc && pwd)" bash -c '. ./orc-env.sh && echo "${ORC}"')" == "$(cd ../fake-orc && pwd)" ]] \
         || fail "ORC from the caller wasn't used"
 }
@@ -968,6 +969,49 @@ test_env_without_orc_fails_the_build() {
     PATH=/usr/bin:/bin ./build.sh > out.txt 2>&1
     [[ $? -eq 1 ]] || fail "the build passed without orc"
     grep -q 'orc not found' out.txt || fail "no hint: $(cat out.txt)"
+}
+
+# ---- the orc core version ----
+
+# the core version of the orc under test
+core_v() {
+    sed -n 's/^ORC_CORE_V="\(.*\)"$/\1/p' "${RN_RT}/lib/src/main/bash/com/koreyhinton/version.sh"
+}
+
+test_version_is_set() {
+    [[ "$(core_v)" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "ORC_CORE_V is '$(core_v)'"
+}
+
+test_init_pins_the_core_version() {
+    cargo_layout
+    orc init --yes > /dev/null 2>&1 || fail "orc init failed"
+    ! grep -q '@ORC_CORE_V@' orc-env.sh .github/workflows/orc.yml || fail "a placeholder was left in"
+    grep -qF '. "${orc_env_version}" "'"$(core_v)"'"' orc-env.sh || fail "orc-env.sh doesn't ask for $(core_v)"
+    grep -q "ref: core/v$(core_v)\$" .github/workflows/orc.yml || fail "the workflow doesn't check out core/v$(core_v)"
+}
+
+test_env_stops_on_another_core_version() {
+    orc init --yes --ext c > /dev/null 2>&1 || fail "orc init failed"
+    mkdir -p ../other-orc/lib/src/main/bash/com/koreyhinton
+    sed 's/^ORC_CORE_V=.*/ORC_CORE_V="9.9.9"/' "${RN_RT}/lib/src/main/bash/com/koreyhinton/version.sh" \
+        > ../other-orc/lib/src/main/bash/com/koreyhinton/version.sh
+    # sourced into a shell: it fails, but the shell carries on
+    out=$(ORC="$(cd ../other-orc && pwd)" bash -c '. ./orc-env.sh; echo "status $?"' 2> err.txt)
+    [[ "${out}" == "status 1" ]] || fail "got '${out}'"
+    grep -q "Requested: $(core_v), provided: 9.9.9" err.txt || fail "no version error: $(cat err.txt)"
+    [[ -z "$(ORC="$(cd ../other-orc && pwd)" bash -c '. ./orc-env.sh; compgen -v | grep ^orc_env')" ]] \
+        || fail "left orc_env_ variables"
+    # and it stops the build
+    ORC="$(cd ../other-orc && pwd)" ./build.sh > out.txt 2>&1
+    [[ $? -eq 1 ]] || fail "the build passed on another core version"
+}
+
+test_env_stops_on_an_orc_older_than_core_versions() {
+    orc init --yes --ext c > /dev/null 2>&1 || fail "orc init failed"
+    mkdir -p ../old-orc/lib/src/main/bash/com/koreyhinton
+    ORC="$(cd ../old-orc && pwd)" bash -c '. ./orc-env.sh' 2> err.txt
+    [[ $? -eq 1 ]] || fail "an orc with no version.sh passed"
+    grep -q "has no core version.*check out core/v$(core_v)" err.txt || fail "no hint: $(cat err.txt)"
 }
 
 for RN_TEST in $(declare -F | awk '{print $3}' | grep '^test_'); do

@@ -11,9 +11,9 @@ This app's code is generated: bash scripts print the program, assembled with [or
 - Each pipeline is a `main.sh` and the file it generates, listed in `build.sh` as `"<main.sh>|<output>|<formatter>"`. An app can have several, such as a backend and a frontend.
 - Outputs are generated and gitignored. Never edit one; edit the `.sh` files and run `./build.sh`.
 - `build.sh` writes each output to a temp file first, so a failed build keeps the last good output. A formatter, if listed, tidies the output; `orc init` adds `rustfmt` for Rust and `gofmt` for Go.
-- `orc-env.sh` finds orc: `$ORC` if set, else `orc root` (orc's `cli` folder on `PATH`), else `../orc`. It warns when it falls back or `orc` isn't on `PATH`, and carries on. It exports `NSMAP`, and each orc library the app uses gets its path and version there too.
+- `orc-env.sh` finds orc: `$ORC` if set, else `orc root` (orc's `cli` folder on `PATH`), else `../orc`. It warns when it falls back or `orc` isn't on `PATH`, and carries on. It checks the orc core version the project is pinned to (stopping the build on another one), exports `NSMAP`, and each orc library the app uses gets its path and version there too.
 - `orc init` sets up a pipeline for each new `main.sh` (or entry file such as `src/main.rs`) it finds, and never changes one that's already listed. Run it again after adding one. It never runs the language's own tool (`cargo init`, `go mod init`, ...); it warns when that tool's project file is missing.
-- CI (`.github/workflows/orc.yml`) runs `./build.sh`. Add the language's build and test steps after it.
+- CI (`.github/workflows/orc.yml`) checks out orc at the pinned core version's tag (`core/v<version>`) and runs `./build.sh`. Bump the version in `orc-env.sh` and the workflow together. Add the language's build and test steps after it.
 
 ## One pipeline: main.sh calls every snippet
 

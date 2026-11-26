@@ -23,6 +23,20 @@ if [[ ! -d "${ORC}/lib/src/main/bash/com/koreyhinton" ]]; then
     unset orc_env_cli
     return 1 2>/dev/null || exit 1
 fi
+# the orc core version this project builds against (the one orc init ran
+# with); an orc with another version stops the build. To move to a newer
+# orc, bump it here and in CI's orc checkout (ref: core/v<version>).
+orc_env_version="${ORC}/lib/src/main/bash/com/koreyhinton/version.sh"
+if [[ ! -f "${orc_env_version}" ]]; then
+    echo "orc at ${ORC} has no core version (older than core/v@ORC_CORE_V@): check out core/v@ORC_CORE_V@" >&2
+    unset orc_env_cli orc_env_version
+    return 1 2>/dev/null || exit 1
+fi
+if ! . "${orc_env_version}" "@ORC_CORE_V@"; then
+    unset orc_env_cli orc_env_version
+    return 1 2>/dev/null || exit 1
+fi
+unset orc_env_version
 if ! command -v orc > /dev/null 2>&1; then
     echo "orc-env.sh: warning: orc isn't on PATH; add ${ORC}/${orc_env_cli} to PATH to run orc init and orc check by name" >&2
 fi

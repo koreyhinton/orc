@@ -24,11 +24,12 @@ jobs:
       uses: actions/checkout@v4
       with:
         path: app
+    # pinned to the orc core version orc-env.sh asks for; bump both together
     - name: checkout orc using actions/checkout@v4
       uses: actions/checkout@v4
       with:
         repository: koreyhinton/orc
-        ref: main
+        ref: core/v@ORC_CORE_V@
         path: orc
     # orc on PATH too, so orc-env.sh doesn't warn and steps can run orc
     - name: put orc's cli on PATH

@@ -43,6 +43,9 @@ orc_cli_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 orc_templates="${orc_cli_dir}/init"
 orc_langs="${orc_templates}/lang"
 orc_root=$(realpath "${orc_cli_dir}/../../../../../../..")
+# the core version this orc is: orc-env.sh and the workflow are pinned to it
+orc_core_v=$(sed -n 's/^ORC_CORE_V="\(.*\)"$/\1/p' "${orc_cli_dir}/../version.sh")
+[[ -n "${orc_core_v}" ]] || { echo "orc init: no ORC_CORE_V in ${orc_cli_dir}/../version.sh" >&2; exit 1; }
 
 orc_usage="usage: orc init [--yes] [--dry-run] [--ext <ext>] [--entry <file>]... [--license agpl|keep]"
 
@@ -630,7 +633,9 @@ fi
 
 # orc-env.sh
 if [[ ! -e orc-env.sh ]]; then
-    orc_plan_write create orc-env.sh "${orc_templates}/orc-env.sh" yes "finds orc"
+    orc_staged=$(orc_stage_file)
+    sed "s/@ORC_CORE_V@/${orc_core_v}/g" "${orc_templates}/orc-env.sh" > "${orc_staged}"
+    orc_plan_write create orc-env.sh "${orc_staged}" yes "finds orc, core v${orc_core_v}"
 fi
 
 # build.sh: the pipelines
@@ -657,7 +662,9 @@ fi
 
 # the workflow
 if [[ ! -e .github/workflows/orc.yml ]]; then
-    orc_plan_write create .github/workflows/orc.yml "${orc_templates}/orc.yml" no "CI runs ./build.sh"
+    orc_staged=$(orc_stage_file)
+    sed "s/@ORC_CORE_V@/${orc_core_v}/g" "${orc_templates}/orc.yml" > "${orc_staged}"
+    orc_plan_write create .github/workflows/orc.yml "${orc_staged}" no "CI runs ./build.sh on orc core/v${orc_core_v}"
 fi
 
 # ---- show the plan, then apply it ----

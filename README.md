@@ -24,6 +24,19 @@ library version, checked by models.sh and snippets/import.sh:
 
     ./lib/src/main/bash/com/koreyhinton/nsmap/nsremap
 
+## versions
+
+each part of orc is versioned and tagged on its own:
+
+    core/v{x.y.z}     lib/src/main (nsmap, the orc command)
+    {lib}/v{x.y.z}    a template library, e.g. ws/v0.1.0
+
+the core version is in:
+
+    ./lib/src/main/bash/com/koreyhinton/version.sh
+
+`orc init` pins a project to the core version it ran with: its `orc-env.sh` checks it on every build (a different orc stops the build), and its CI checks out the matching tag (`ref: core/v0.1.0`). to move a project to a newer orc, bump the version in both places.
+
 ## the orc command
 
 put the cli folder on PATH:
