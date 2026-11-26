@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# orc: run an orc command, git style. "orc <command> [args]" runs the
+# orc-<command> script next to this one, so putting this folder on PATH is
+# all an app needs:
+#
+#     export PATH="<orc>/lib/src/main/bash/com/koreyhinton/cli:${PATH}"
+#     orc init
+
+# this folder, even when orc is called through a symlink on PATH
+orc_cli_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+
+orc_usage() {
+    cat << USAGE
+usage: orc <command> [args]
+
+commands:
+  init     set up orc around the current folder's layout (orc init --help)
+  check    check that only a main.sh calls snippets (orc check [<dir>])
+  root     print orc's root folder
+USAGE
+}
+
+orc_cmd=$1
+if [[ "${orc_cmd}" == "-h" || "${orc_cmd}" == "--help" || "${orc_cmd}" == "help" ]]; then
+    orc_usage
+    exit 0
+fi
+if [[ -z "${orc_cmd}" ]]; then
+    orc_usage >&2
+    exit 2
+fi
+if [[ ! "${orc_cmd}" =~ ^[a-z][a-z-]*$ || ! -x "${orc_cli_dir}/orc-${orc_cmd}" ]]; then
+    echo "orc: unknown command: ${orc_cmd}" >&2
+    orc_usage >&2
+    exit 2
+fi
+shift
+exec "${orc_cli_dir}/orc-${orc_cmd}" "$@"

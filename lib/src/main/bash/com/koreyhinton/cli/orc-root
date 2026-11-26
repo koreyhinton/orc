@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# orc root: print orc's root folder (the one holding lib/), found from this
+# script's own location, through any symlink.
+
+orc_cli_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+# cli -> koreyhinton -> com -> bash -> main -> src -> lib -> root
+realpath "${orc_cli_dir}/../../../../../../.."

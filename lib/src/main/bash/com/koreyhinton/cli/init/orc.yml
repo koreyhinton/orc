@@ -1,0 +1,38 @@
+# orc init: orc.yml
+# Checks the architecture (orc check) and generates the programs from bash
+# with orc (build.sh). Add the language's build and test steps after it.
+
+name: orc build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    env:
+      # orc's root folder, checked out below (orc-env.sh reads it)
+      ORC: ${{ github.workspace }}/orc
+
+    steps:
+    - name: checkout the app using actions/checkout@v4
+      uses: actions/checkout@v4
+      with:
+        path: app
+    - name: checkout orc using actions/checkout@v4
+      uses: actions/checkout@v4
+      with:
+        repository: koreyhinton/orc
+        ref: main
+        path: orc
+    # orc on PATH too, so orc-env.sh doesn't warn and steps can run orc
+    - name: put orc's cli on PATH
+      run: echo "${ORC}/lib/src/main/bash/com/koreyhinton/cli" >> "${GITHUB_PATH}"
+    - name: check the architecture and generate the programs
+      working-directory: ./app
+      run: ./build.sh

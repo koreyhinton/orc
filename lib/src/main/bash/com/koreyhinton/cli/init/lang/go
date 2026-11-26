@@ -1,0 +1,15 @@
+# Go. orc init reads these settings (sourced; plain assignments only).
+ORC_LANG_NAME="Go"
+ORC_LANG_FILE="main.go"
+ORC_LANG_FORMAT="gofmt"
+ORC_LANG_IGNORE=()
+# the language's own project file(s), looked for in and above the output's
+# folder; with none, orc init warns that the tool below makes them (it never
+# runs the tool itself). Glob patterns are allowed.
+ORC_LANG_PROJECT=("go.mod")
+ORC_LANG_PROJECT_TOOL="go mod init <module path>"
+ORC_LANG_SKELETON='package main
+
+func main() {
+    // snippets go here
+}'

@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# orc check [<dir>]: check an app's architecture. Language independent: it
+# only greps the bash.
+#
+# Rule: snippets are leaves. Every main.sh under <dir> (default: the current
+# folder) is a pipeline, the only kind of script that may call others. Each
+# local script a main.sh calls (its snippets, its models.sh, ...) prints its
+# code and runs nothing that ends in .sh, so each main.sh is a single
+# pipeline that calls every snippet, one level deep.
+#
+# A line counts as running a script when, outside a bash comment, it has:
+#   ` ./x.sh ... `      a backtick call (how main.sh inlines a snippet)
+#   $( ./x.sh ... )     a command substitution
+#   ./x.sh ...          a script path as a command's first word (at the
+#                       line's start, or after ;, &&, || or |)
+#   . x.sh, source x.sh, bash x.sh, sh x.sh, exec x.sh
+# A comment in the printed code that only names a script (// see draw.sh)
+# isn't a call. Sourcing orc's nsmap tools (. ${NSMAP}/bind) is allowed:
+# they aren't .sh files.
+#
+# In a git work tree, folders .gitignore excludes are skipped.
+#
+# Prints each violation as file:line and exits 1 if there are any, or 2 if
+# there's no main.sh to check.
+
+orc_cli_dir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+. "${orc_cli_dir}/common.bash" || exit 2
+
+orc_dir=${1:-.}
+if [[ ! -d "${orc_dir}" ]]; then
+    echo "orc check: no folder ${orc_dir}" >&2
+    exit 2
+fi
+
+mapfile -t orc_mains < <(orc_list_files "${orc_dir}" | grep -E '(^|/)main\.sh$')
+if [[ ${#orc_mains[@]} -eq 0 ]]; then
+    echo "orc check: no main.sh under ${orc_dir}" >&2
+    exit 2
+fi
+
+# every local script a main.sh calls, once each
+declare -A orc_seen=()
+orc_snippets=()
+for orc_main in "${orc_mains[@]}"; do
+    orc_main_dir=$(dirname "${orc_main}")
+    while IFS= read -r orc_called; do
+        orc_path=$(realpath -m --relative-to=. "${orc_main_dir}/${orc_called}")
+        if [[ -f "${orc_path}" && -z "${orc_seen[${orc_path}]}" ]]; then
+            orc_seen[${orc_path}]=1
+            orc_snippets+=("${orc_path}")
+        fi
+    done < <(orc_called_scripts "${orc_main}")
+done
+
+orc_failed=0
+for orc_file in "${orc_snippets[@]}"; do
+    while IFS= read -r orc_hit; do
+        echo "${orc_file}:${orc_hit%%:*}: runs a script, but only a main.sh may call snippets:" >&2
+        echo "    ${orc_hit#*:}" | sed 's/^ *\(.*\)/    \1/' >&2
+        orc_failed=1
+    done < <(orc_calls "${orc_file}")
+done
+
+if [[ ${orc_failed} -ne 0 ]]; then
+    echo "orc check: failed. Call each snippet from main.sh instead, and pass data through main.sh's maps." >&2
+    exit 1
+fi
+echo "orc check: ok (${#orc_mains[@]} main.sh, ${#orc_snippets[@]} snippets)"

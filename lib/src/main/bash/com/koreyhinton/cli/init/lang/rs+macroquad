@@ -1,0 +1,17 @@
+# Rust with macroquad: a framework skeleton. orc init uses it in place of the
+# rs skeleton when the nearest Cargo.toml depends on ORC_FRAMEWORK_DEP, and
+# offers it in place of cargo's untouched hello world. Sourced after rs, so
+# anything not set here comes from rs.
+ORC_FRAMEWORK_NAME="macroquad"
+ORC_FRAMEWORK_DEP="macroquad"
+# @ORC_APP@ is the app folder's name (the window's title)
+ORC_LANG_SKELETON='use macroquad::prelude::*;
+
+#[macroquad::main("@ORC_APP@")]
+async fn main() {
+    loop {
+        clear_background(WHITE);
+        // snippets go here
+        next_frame().await
+    }
+}'
